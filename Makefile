@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -std=c89 -pedantic -pedantic-errors -Wall -Wextra -g
 
 ODIR = obj
-SHROBJS = shared/shrtest.o
+SHROBJS = shared/shrtest.o shared/packet.o
 CLIOBJS = $(SHROBJS) client/bombcli.o
 SRVOBJS = $(SHROBJS) server/bombsrv.o
 

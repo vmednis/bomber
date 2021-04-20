@@ -1,3 +1,6 @@
 obj/
 bombcli
 bombsrv
+.vscode/configurationCache.log
+.vscode/dryrun.log
+.vscode/targets.log

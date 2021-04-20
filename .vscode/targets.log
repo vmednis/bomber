@@ -6,7 +6,7 @@ make all --print-data-base --no-builtin-variables --no-builtin-rules --question
 # This is free software: you are free to change and redistribute it.
 # There is NO WARRANTY, to the extent permitted by law.
 
-# Make data base, printed on Tue Apr 20 21:29:46 2021
+# Make data base, printed on Tue Apr 20 22:38:44 2021
 
 # Variables
 
@@ -59,7 +59,7 @@ CSF_ShadersDirectory = /usr/share/opencascade/resources/Shaders
 # environment
 LANG = en_US.UTF-8
 # makefile (from 'Makefile', line 5)
-SHROBJS = shared/shrtest.o
+SHROBJS = shared/shrtest.o shared/packet.o
 # default
 .LOADED := 
 # default
@@ -255,7 +255,7 @@ CC = gcc
 # environment
 GDMSESSION = sway
 # variable set hash-table stats:
-# Load=122/1024=12%, Rehash=0, Collisions=13/161=8%
+# Load=122/1024=12%, Rehash=0, Collisions=13/166=8%
 
 # Pattern-specific Variable Values
 
@@ -263,12 +263,10 @@ GDMSESSION = sway
 
 # Directories
 
-# client (device 2053, inode 3270907): 3 files, no impossibilities so far.
-# . (device 2053, inode 3270904): 10 files, no impossibilities.
-# server (device 2053, inode 3352886): 3 files, no impossibilities so far.
-# shared (device 2053, inode 3270906): 3 files, no impossibilities so far.
+# . (device 2053, inode 3270904): 12 files, no impossibilities.
+# shared (device 2053, inode 3270906): 6 files, no impossibilities so far.
 
-# 19 files, no impossibilities in 4 directories.
+# 18 files, no impossibilities in 2 directories.
 
 # Implicit Rules
 
@@ -276,49 +274,71 @@ obj/%.o: %.c obj
 #  recipe to execute (from 'Makefile', line 18):
 	$(CC) -c $< -o $@ $(CFLAGS)
 
- 
 # 1 implicit rules, 0 (0.0%) terminal.
 # Files
 
-obj/client/bombcli.o: client/bombcli.c obj
+# Not a target:
+shared/packet.c:
 #  Implicit rule search has been done.
-#  Implicit/static pattern stem: 'client/bombcli'
-#  Last modified 2021-04-20 21:28:21.719150963
+#  Last modified 2021-04-20 22:07:53.317380082
 #  File has been updated.
 #  Successfully updated.
-#  recipe to execute (from 'Makefile', line 18):
-	$(CC) -c $< -o $@ $(CFLAGS)
 
-bombcli: obj/shared/shrtest.o obj/client/bombcli.o
+# Not a target:
+obj/client/bombcli.o:
 #  Implicit rule search has not been done.
-#  Last modified 2021-04-20 21:29:36.825233717
+#  Modification time never checked.
+#  File has not been updated.
+
+bombcli: obj/shared/shrtest.o obj/shared/packet.o obj/client/bombcli.o
+#  Implicit rule search has not been done.
+#  Last modified 2021-04-20 21:30:54.841293891
 #  File has been updated.
-#  Successfully updated.
+#  Needs to be updated (-q is set).
+# variable set hash-table stats:
+# Load=0/32=0%, Rehash=0, Collisions=0/5=0%
 #  recipe to execute (from 'Makefile', line 12):
 	$(CC) $^ -o $@ $(CFLAGS)
 
-obj/server/bombsrv.o: server/bombsrv.c obj
-#  Implicit rule search has been done.
-#  Implicit/static pattern stem: 'server/bombsrv'
-#  Last modified 2021-04-20 21:21:03.275892867
-#  File has been updated.
-#  Successfully updated.
-#  recipe to execute (from 'Makefile', line 18):
-	$(CC) -c $< -o $@ $(CFLAGS)
+# Not a target:
+obj/server/bombsrv.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
 
 # Not a target:
 Makefile:
 #  Implicit rule search has been done.
-#  Last modified 2021-04-20 21:29:34.821915958
+#  Last modified 2021-04-20 22:38:37.066379364
 #  File has been updated.
 #  Successfully updated.
 
-# Not a target:
-client/bombcli.c:
+obj/shared/packet.o: shared/packet.c obj
 #  Implicit rule search has been done.
-#  Last modified 2021-04-20 21:28:19.632500519
+#  Implicit/static pattern stem: 'shared/packet'
+#  File does not exist.
 #  File has been updated.
-#  Successfully updated.
+#  Needs to be updated (-q is set).
+# automatic
+# @ := obj/shared/packet.o
+# automatic
+# * := shared/packet
+# automatic
+# < := shared/packet.c
+# automatic
+# + := shared/packet.c obj
+# automatic
+# % := 
+# automatic
+# ^ := shared/packet.c obj
+# automatic
+# ? := shared/packet.c obj
+# automatic
+# | := 
+# variable set hash-table stats:
+# Load=8/32=25%, Rehash=0, Collisions=2/15=13%
+#  recipe to execute (from 'Makefile', line 18):
+	$(CC) -c $< -o $@ $(CFLAGS)
 
 clean:
 #  Implicit rule search has not been done.
@@ -331,24 +351,23 @@ clean:
 # Not a target:
 shared/shrtest.c:
 #  Implicit rule search has been done.
-#  Last modified 2021-04-20 21:26:42.433256197
+#  Last modified 2021-04-20 21:30:52.617977843
 #  File has been updated.
 #  Successfully updated.
 
 obj/shared/shrtest.o: shared/shrtest.c obj
 #  Implicit rule search has been done.
 #  Implicit/static pattern stem: 'shared/shrtest'
-#  Last modified 2021-04-20 21:29:36.788567334
+#  Last modified 2021-04-20 21:30:54.801294201
 #  File has been updated.
 #  Successfully updated.
 #  recipe to execute (from 'Makefile', line 18):
 	$(CC) -c $< -o $@ $(CFLAGS)
 
-bombsrv: obj/shared/shrtest.o obj/server/bombsrv.o
+bombsrv: obj/shared/shrtest.o obj/shared/packet.o obj/server/bombsrv.o
 #  Implicit rule search has not been done.
-#  Last modified 2021-04-20 21:29:36.85856679
-#  File has been updated.
-#  Successfully updated.
+#  Modification time never checked.
+#  File has not been updated.
 #  recipe to execute (from 'Makefile', line 15):
 	$(CC) $^ -o $@ $(CFLAGS)
 
@@ -364,7 +383,6 @@ obj:
 	mkdir $(ODIR)/server
 
 # Not a target:
- 
 .DEFAULT:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
@@ -375,30 +393,24 @@ all: bombcli bombsrv
 #  Implicit rule search has been done.
 #  File does not exist.
 #  File has been updated.
-#  Successfully updated.
-
- 
-# Not a target:
-server/bombsrv.c:
-#  Implicit rule search has been done.
-#  Last modified 2021-04-20 21:18:54.946890569
-#  File has been updated.
-#  Successfully updated.
+#  Needs to be updated (-q is set).
+# variable set hash-table stats:
+# Load=0/32=0%, Rehash=0, Collisions=0/5=0%
 
 # files hash-table stats:
-# Load=14/1024=1%, Rehash=0, Collisions=0/48=0%
+# Load=14/1024=1%, Rehash=0, Collisions=0/45=0%
 # VPATH Search Paths
 
 # No 'vpath' search paths.
 
 # No general ('VPATH' variable) search path.
 
-# strcache buffers: 1 (0) / strings = 31 / storage = 335 B / avg = 10 B
-# current buf: size = 8162 B / used = 335 B / count = 31 / avg = 10 B
+# strcache buffers: 1 (0) / strings = 32 / storage = 335 B / avg = 10 B
+# current buf: size = 8162 B / used = 335 B / count = 32 / avg = 10 B
 
-# strcache performance: lookups = 65 / hit rate = 52%
+# strcache performance: lookups = 59 / hit rate = 45%
 # hash-table stats:
-# Load=31/8192=0%, Rehash=0, Collisions=0/65=0%
-# Finished Make data base on Tue Apr 20 21:29:46 2021
+# Load=32/8192=0%, Rehash=0, Collisions=0/59=0%
+# Finished Make data base on Tue Apr 20 22:38:44 2021
 
  

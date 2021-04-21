@@ -31,7 +31,6 @@ struct PacketGameAreaInfo {
 };
 
 struct PacketMovableObjectInfo {
-        unsigned char objectCount;
         unsigned char objectType;
         unsigned int objectID;
         float objectX;
@@ -39,8 +38,13 @@ struct PacketMovableObjectInfo {
         char movement;
 };
 
+struct PacketMovableObjects {
+        unsigned char objectCount;
+        struct PacketMovableObjectInfo *movableObjects; 
+};
+
 struct PacketServerMessage {
-        char messageType; /* 0 - chat message, 1 - server message */
+        char messageType;
         char message[256];
 };
 
@@ -55,10 +59,10 @@ struct PacketPlayerInfo {
 
 /*Implementation*/
 struct PacketCallbacks {
-        void (*callback[256])(void *);
+        void (*callback[256])(void*);
 };
 
-int PacketEncode(char * buffer, unsigned char type, void * packet);
-void PacketDecode(char * buffer, int len, struct PacketCallbacks * callbacks);
+int PacketEncode(char* buffer, unsigned char type, void* packet);
+void PacketDecode(char* buffer, int len, struct PacketCallbacks* callbacks);
 
 #endif

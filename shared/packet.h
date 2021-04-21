@@ -19,6 +19,39 @@ struct PacketClientMessage {
 };
 
 /*Server Packets*/
+struct PacketServerIdentification {
+        unsigned char protoVersion;
+        unsigned int clientAccepted;
+};
+
+struct PacketGameAreaInfo {
+        unsigned char sizeX;
+        unsigned char sizeY;
+        unsigned char* blockIDs;
+};
+
+struct PacketMovableObjectInfo {
+        unsigned char objectCount;
+        unsigned char objectType;
+        unsigned int objectID;
+        float objectX;
+        float objectY;
+        char movement;
+};
+
+struct PacketServerMessage {
+        char messageType; /* 0 - chat message, 1 - server message */
+        char message[256];
+};
+
+struct PacketPlayerInfo {
+        unsigned int playerCount;
+        unsigned int playrID;
+        char playerName[32];
+        char playerColor;
+        unsigned int playerPoints;
+        unsigned char playerLives;
+};
 
 /*Implementation*/
 struct PacketCallbacks {

@@ -3,34 +3,54 @@
 #include "../shared/packet.h"
 #include "../shared/shrtest.h"
 
-void testPackets();
+static void TestPackets();
 
 int main() {
         hellotest("Client");
-        testPackets();
+        TestPackets();
         return 0;
 }
 
-void testPackets() {
+static void CallbackClientId(void * packet) {
+        struct PacketClientIdentify *pcid = packet;
+        pcid = pcid;
+}
+
+static void CallbackClientInput(void * packet) {
+        struct PacketClientInput *pcin = packet;
+        pcin = pcin;
+}
+
+static void CallbackClientMessage(void * packet) {
+        struct PacketClientMessage *pcmsg = packet;
+        pcmsg = pcmsg;
+}
+
+static void TestPackets() {
         unsigned char buffer[PACKET_MAX_BUFFER];
         struct PacketClientIdentify pcid;
         struct PacketClientInput pcin;
         struct PacketClientMessage pcmsg;
+        struct PacketCallbacks pccbks;
         unsigned int len;
+
+        pccbks.callback[PACKET_TYPE_CLIENT_IDENTIFY] = &CallbackClientId;
+        pccbks.callback[PACKET_TYPE_CLIENT_INPUT] = &CallbackClientInput;
+        pccbks.callback[PACKET_TYPE_CLIENT_MESSAGE] = &CallbackClientMessage;
 
         pcid.protoVersion = 0x00;
         strcpy(pcid.playerName, "Valters");
         pcid.playerColor = 'x';
         len = PacketEncode(buffer, PACKET_TYPE_CLIENT_IDENTIFY, &pcid);
-        len = len;
+        PacketDecode(buffer, len, &pccbks);
 
         pcin.movementX = -1;
         pcin.movementY = 127;
         pcin.action = 1;
         len = PacketEncode(buffer, PACKET_TYPE_CLIENT_INPUT, &pcin);
-        len = len;
+        PacketDecode(buffer, len, &pccbks);
 
         strcpy(pcmsg.message, "Hello World!");
         len = PacketEncode(buffer, PACKET_TYPE_CLIENT_MESSAGE, &pcmsg);
-        len = len;
+        PacketDecode(buffer, len, &pccbks);
 }

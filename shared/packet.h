@@ -2,9 +2,16 @@
 #define PACKET_H
 
 #define PACKET_MAX_BUFFER 1024*1024
+
 #define PACKET_TYPE_CLIENT_IDENTIFY 0x00
 #define PACKET_TYPE_CLIENT_INPUT 0x01
 #define PACKET_TYPE_CLIENT_MESSAGE 0x02
+
+#define PACKET_ERR_ENCODE_UNIMPLEMENTED -1
+#define PACKET_ERR_DECODE_START -1
+#define PACKET_ERR_DECODE_CHECKSUM -2
+#define PACKET_ERR_DECODE_OTHER -3
+#define PACKET_ERR_DECODE_UNIMPLEMENTED -4
 
 /*Client Packets*/
 struct PacketClientIdentify {
@@ -68,6 +75,6 @@ struct PacketCallbacks {
 };
 
 int PacketEncode(unsigned char* buffer, unsigned char type, void* packet);
-void PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbacks);
+int PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbacks);
 
 #endif

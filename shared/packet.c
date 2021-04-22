@@ -11,6 +11,11 @@ static int PackPacketClientIdentify(unsigned char* buffer, void* packet);
 static int PackPacketClientInput(unsigned char* buffer, void* packet);
 static int PackPacketClientMessage(unsigned char* buffer, void* packet);
 
+/*Unpack*/
+static void UnpackPacketClientIdentify(unsigned char* buffer, void* packet);
+static void UnpackPacketClientInput(unsigned char* buffer, void* packet);
+static void UnpackPacketClientMessage(unsigned char* buffer, void* packet);
+
 int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
         unsigned char tmpBuffer[PACKET_MAX_BUFFER];
         int offset = 0;
@@ -39,7 +44,8 @@ int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
                         len = PackPacketClientMessage(tmpBuffer, packet);
                         break;
                 default:
-                        printf("Warning! Tried to decode unimplemented package %i", type);
+                        printf("Warning! Tried to encode unimplemented package %i", type);
+                        return PACKET_ERR_ENCODE_UNIMPLEMENTED;
         }
         len = BufferEscape(tmpBuffer, len);
         while(ptr < len) {
@@ -61,13 +67,54 @@ int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
         return offset;
 }
 
-void PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbacks) {
-        /*Shutup unused*/
-        buffer = buffer;
-        len = len;
-        callbacks = callbacks;
-        BufferUnscape(buffer, len);
-        return;
+int PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbacks) {
+        int ptr = 0;
+        unsigned char check = 0;
+        unsigned char type;
+        unsigned char packet[PACKET_MAX_BUFFER];
+
+        /* Check for packet start */
+        if(!(buffer[0] == 0xff && buffer[1] == 0x00)) {
+                return PACKET_ERR_DECODE_START;
+        }
+
+        /*Check if packet is of minimum length*/
+        if(len < 4) {
+                return PACKET_ERR_DECODE_OTHER;
+        }
+
+        /* Check the checksum */
+        while (ptr < len - 1) {
+                check ^= buffer[ptr];
+                ptr++;
+        }
+        if(buffer[len - 1] != check) {
+                return PACKET_ERR_DECODE_CHECKSUM;
+        }
+
+        /* Get the type */
+        type = buffer[2];
+
+        /* Unescape and then unpack */
+        len = BufferUnscape(buffer + 3, len - 4);
+        switch(type) {
+                case PACKET_TYPE_CLIENT_IDENTIFY:
+                        UnpackPacketClientIdentify(buffer + 3, packet);
+                        break;
+                case PACKET_TYPE_CLIENT_INPUT:
+                        UnpackPacketClientInput(buffer + 3, packet);
+                        break;
+                case PACKET_TYPE_CLIENT_MESSAGE:
+                        UnpackPacketClientMessage(buffer + 3, packet);
+                        break;
+                default:
+                        printf("Warning! Tried to decode unimplemented package %i", type);
+                        return PACKET_ERR_DECODE_UNIMPLEMENTED;
+
+        }
+
+        callbacks->callback[type](packet);
+        return 0;
 }
 
 /*
@@ -181,4 +228,49 @@ static int PackPacketClientMessage(unsigned char* buffer, void* packet) {
         offset += sizeof(pcm->message);
 
         return sizeof(struct PacketClientMessage);
+}
+
+
+static void UnpackPacketClientIdentify(unsigned char* buffer, void* packet) {
+        struct PacketClientIdentify* pci = (struct PacketClientIdentify*)packet;
+        int offset = 0;
+        unsigned int ptr = 0;
+
+        pci->protoVersion = buffer[offset];
+        offset += sizeof(pci->protoVersion);
+
+        while(ptr < sizeof(pci->playerName)) {
+                pci->playerName[ptr] = buffer[offset + ptr];
+                ptr++;
+        }
+        offset += sizeof(pci->playerName);
+
+        pci->playerColor = buffer[offset];
+        offset += sizeof(pci->playerColor);
+}
+
+static void UnpackPacketClientInput(unsigned char* buffer, void* packet) {
+        struct PacketClientInput* pci = (struct PacketClientInput*)packet;
+        int offset = 0;
+
+        pci->movementX = buffer[offset];
+        offset += sizeof(pci->movementX);
+
+        pci->movementY = buffer[offset];
+        offset += sizeof(pci->movementY);
+
+        pci->action = buffer[offset];
+        offset += sizeof(pci->action);
+}
+
+static void UnpackPacketClientMessage(unsigned char* buffer, void* packet) {
+        struct PacketClientMessage* pcm = (struct PacketClientMessage*)packet;
+        int offset = 0;
+        unsigned int ptr = 0;
+
+        while(ptr < sizeof(pcm->message)) {
+                pcm->message[ptr] = buffer[offset + ptr];
+                ptr++;
+        }
+        offset += sizeof(pcm->message);
 }

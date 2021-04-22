@@ -1,9 +1,9 @@
 CC = gcc
-CFLAGS = -std=c89 -pedantic -pedantic-errors -Wall -Wextra -g
+CFLAGS = -std=c99 -Wall -Wextra -g -lraylib
 
 ODIR = obj
 SHROBJS = shared/shrtest.o shared/packet.o
-CLIOBJS = $(SHROBJS) client/bombcli.o
+CLIOBJS = $(SHROBJS) client/bombcli.o client/tests.o
 SRVOBJS = $(SHROBJS) server/bombsrv.o
 
 all: bombcli bombsrv

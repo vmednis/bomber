@@ -1,56 +1,47 @@
 #include <stdio.h>
-#include <string.h>
-#include "../shared/packet.h"
-#include "../shared/shrtest.h"
+#include <raylib.h>
+#include "../client/tests.h"
 
-static void TestPackets();
+#define SCREEN_WIDTH 960
+#define SCREEN_HEIGHT 540
+
+unsigned char worldX = 9;
+unsigned char worldY = 7;
+unsigned char world[7][9] = {
+        {1, 1, 1, 1, 1, 1, 1, 1, 1},
+        {1, 0, 0, 0, 2, 0, 0, 0, 1},
+        {1, 0, 1, 2, 1, 2, 1, 0, 1},
+        {1, 0, 2, 0, 2, 0, 2, 0, 1},
+        {1, 2, 1, 0, 1, 0, 1, 2, 1},
+        {1, 0, 0, 0, 2, 0, 0, 0, 1},
+        {1, 1, 1, 1, 1, 1, 1, 1, 1}
+};
+
+Texture2D walls[16] = {0};
 
 int main() {
-        hellotest("Client");
-        TestPackets();
+        int i, j;
+        SelfTest();
+
+        InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Bomber Client");
+
+        walls[1] = LoadTexture("assets/wall_solid.png");
+        walls[2] = LoadTexture("assets/wall_breakable.png");
+
+        while(!WindowShouldClose()) {
+                BeginDrawing();
+                        ClearBackground(RAYWHITE);
+                        DrawTexture(walls[1], 0, 0, WHITE);
+                        for(i = 0; i < worldY; i++) {
+                                for(j = 0; j < worldX; j++) {
+                                        if(world[i][j] != 0) {
+                                                DrawTexture(walls[world[i][j]], j * 64, i * 64, WHITE);
+                                        }
+                                }
+                        }
+                EndDrawing();
+        }
+
+        CloseWindow();
         return 0;
-}
-
-static void CallbackClientId(void * packet) {
-        struct PacketClientIdentify *pcid = packet;
-        pcid = pcid;
-}
-
-static void CallbackClientInput(void * packet) {
-        struct PacketClientInput *pcin = packet;
-        pcin = pcin;
-}
-
-static void CallbackClientMessage(void * packet) {
-        struct PacketClientMessage *pcmsg = packet;
-        pcmsg = pcmsg;
-}
-
-static void TestPackets() {
-        unsigned char buffer[PACKET_MAX_BUFFER];
-        struct PacketClientIdentify pcid;
-        struct PacketClientInput pcin;
-        struct PacketClientMessage pcmsg;
-        struct PacketCallbacks pccbks;
-        unsigned int len;
-
-        pccbks.callback[PACKET_TYPE_CLIENT_IDENTIFY] = &CallbackClientId;
-        pccbks.callback[PACKET_TYPE_CLIENT_INPUT] = &CallbackClientInput;
-        pccbks.callback[PACKET_TYPE_CLIENT_MESSAGE] = &CallbackClientMessage;
-
-        pcid.protoVersion = 0x00;
-        strcpy(pcid.playerName, "Valters");
-        pcid.playerColor = 'x';
-        len = PacketEncode(buffer, PACKET_TYPE_CLIENT_IDENTIFY, &pcid);
-        PacketDecode(buffer, len, &pccbks);
-
-        pcin.movementX = -1;
-        pcin.movementY = 127;
-        pcin.action = 1;
-        len = PacketEncode(buffer, PACKET_TYPE_CLIENT_INPUT, &pcin);
-        PacketDecode(buffer, len, &pccbks);
-
-        strcpy(pcmsg.message, "Hello World!");
-        len = PacketEncode(buffer, PACKET_TYPE_CLIENT_MESSAGE, &pcmsg);
-        PacketDecode(buffer, len, &pccbks);
 }

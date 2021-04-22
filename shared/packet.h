@@ -1,11 +1,25 @@
 #ifndef PACKET_H
 #define PACKET_H
 
+#define PACKET_MAX_BUFFER 1024*1024
+
+#define PACKET_TYPE_CLIENT_IDENTIFY 0x00
+#define PACKET_TYPE_CLIENT_INPUT 0x01
+#define PACKET_TYPE_CLIENT_MESSAGE 0x02
+#define PACKET_TYPE_SERVER_IDENTIFY 0x80
+#define PACKET_TYPE_SERVER_GAME_AREA 0x81
+
+#define PACKET_ERR_ENCODE_UNIMPLEMENTED -1
+#define PACKET_ERR_DECODE_START -1
+#define PACKET_ERR_DECODE_CHECKSUM -2
+#define PACKET_ERR_DECODE_OTHER -3
+#define PACKET_ERR_DECODE_UNIMPLEMENTED -4
+
 /*Client Packets*/
-struct PacketClientIdentify {
+struct PacketClientId {
         unsigned char protoVersion;
         char playerName[32];
-        char playerColor[32];
+        char playerColor;
 };
 
 struct PacketClientInput {
@@ -19,7 +33,7 @@ struct PacketClientMessage {
 };
 
 /*Server Packets*/
-struct PacketServerIdentification {
+struct PacketServerId {
         unsigned char protoVersion;
         unsigned int clientAccepted;
 };
@@ -40,7 +54,7 @@ struct PacketMovableObjectInfo {
 
 struct PacketMovableObjects {
         unsigned char objectCount;
-        struct PacketMovableObjectInfo *movableObjects; 
+        struct PacketMovableObjectInfo* movableObjects;
 };
 
 struct PacketServerMessage {
@@ -48,7 +62,7 @@ struct PacketServerMessage {
         char message[256];
 };
 
-struct PacketPlayerInfo {
+struct PacketServerPlayerInfo {
         unsigned int playerCount;
         unsigned int playrID;
         char playerName[32];
@@ -62,7 +76,7 @@ struct PacketCallbacks {
         void (*callback[256])(void*);
 };
 
-int PacketEncode(char* buffer, unsigned char type, void* packet);
-void PacketDecode(char* buffer, int len, struct PacketCallbacks* callbacks);
+int PacketEncode(unsigned char* buffer, unsigned char type, void* packet);
+int PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbacks);
 
 #endif

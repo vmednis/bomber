@@ -2,15 +2,15 @@
 #define PACKET_H
 
 #define PACKET_MAX_BUFFER 1024*1024
-
-int EscapeBuffer(unsigned char* buffer, int len);
-int UnescapeBuffer(unsigned char* buffer, int len);
+#define PACKET_TYPE_CLIENT_IDENTIFY 0x00
+#define PACKET_TYPE_CLIENT_INPUT 0x01
+#define PACKET_TYPE_CLIENT_MESSAGE 0x02
 
 /*Client Packets*/
 struct PacketClientIdentify {
         unsigned char protoVersion;
         char playerName[32];
-        char playerColor[32];
+        char playerColor;
 };
 
 struct PacketClientInput {
@@ -45,7 +45,7 @@ struct PacketMovableObjectInfo {
 
 struct PacketMovableObjects {
         unsigned char objectCount;
-        struct PacketMovableObjectInfo *movableObjects; 
+        struct PacketMovableObjectInfo *movableObjects;
 };
 
 struct PacketServerMessage {
@@ -53,7 +53,7 @@ struct PacketServerMessage {
         char message[256];
 };
 
-struct PacketPlayerInfo {
+struct PacketServerPlayerInfo {
         unsigned int playerCount;
         unsigned int playrID;
         char playerName[32];
@@ -66,5 +66,8 @@ struct PacketPlayerInfo {
 struct PacketCallbacks {
         void (*callback[256])(void*);
 };
+
+int PacketEncode(unsigned char* buffer, unsigned char type, void* packet);
+void PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbacks);
 
 #endif

@@ -1,8 +1,0 @@
-make --dry-run --keep-going --print-directory
-make: Entering directory '/home/vmednis/Code/bomber'
-gcc -c shared/packet.c -o obj/shared/packet.o -std=c89 -pedantic -pedantic-errors -Wall -Wextra -g
- 
-gcc obj/shared/shrtest.o obj/shared/packet.o obj/client/bombcli.o -o bombcli -std=c89 -pedantic -pedantic-errors -Wall -Wextra -g
-gcc obj/shared/shrtest.o obj/shared/packet.o obj/server/bombsrv.o -o bombsrv -std=c89 -pedantic -pedantic-errors -Wall -Wextra -g
-make: Leaving directory '/home/vmednis/Code/bomber'
- 

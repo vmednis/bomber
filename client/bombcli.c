@@ -12,7 +12,7 @@ int main() {
 }
 
 static void CallbackClientId(void * packet) {
-        struct PacketClientIdentify *pcid = packet;
+        struct PacketClientId *pcid = packet;
         pcid = pcid;
 }
 
@@ -28,7 +28,7 @@ static void CallbackClientMessage(void * packet) {
 
 static void TestPackets() {
         unsigned char buffer[PACKET_MAX_BUFFER];
-        struct PacketClientIdentify pcid;
+        struct PacketClientId pcid;
         struct PacketClientInput pcin;
         struct PacketClientMessage pcmsg;
         struct PacketCallbacks pccbks;

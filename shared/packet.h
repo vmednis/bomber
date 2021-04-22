@@ -1,6 +1,11 @@
 #ifndef PACKET_H
 #define PACKET_H
 
+#define PACKET_MAX_BUFFER 1024*1024
+
+int EscapeBuffer(unsigned char* buffer, int len);
+int UnescapeBuffer(unsigned char* buffer, int len);
+
 /*Client Packets*/
 struct PacketClientIdentify {
         unsigned char protoVersion;
@@ -61,8 +66,5 @@ struct PacketPlayerInfo {
 struct PacketCallbacks {
         void (*callback[256])(void*);
 };
-
-int PacketEncode(char* buffer, unsigned char type, void* packet);
-void PacketDecode(char* buffer, int len, struct PacketCallbacks* callbacks);
 
 #endif

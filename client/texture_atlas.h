@@ -1,0 +1,8 @@
+#ifndef TEXTURE_ATLAS_H
+#define TEXTURE_ATLAS_H
+
+#define TEXTURE_ATLAS_SIZE 64
+#define TEXTURE_WALL_SOLID 0
+#define TEXTURE_WALL_BREAKABLE 1
+
+#endif

@@ -1,6 +1,12 @@
 #include <stdio.h>
+#include <string.h>
 #include <raylib.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include "../shared/packet.h"
 #include "../client/tests.h"
+#include "../client/network.h"
 #include "../client/gamestate.h"
 #include "../client/texture_atlas.h"
 
@@ -10,9 +16,13 @@
 
 void LoadTextures(Texture2D* atlas);
 void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, float delta);
+void SetupNetwork(struct NetworkState* netState);
+void ProcessNetwork(struct GameState* gameState, struct NetworkState* netState);
+void ProcessInput(struct GameState* gameState, struct NetworkState* netState);
 
 int main() {
         float delta;
+        struct NetworkState netState = {0};
         struct GameState gameState = {0};
         Texture2D textureAtlas[TEXTURE_ATLAS_SIZE] = {0};
 
@@ -21,8 +31,15 @@ int main() {
         InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Bomber Client");
         LoadTextures(textureAtlas);
 
+        strcpy(netState.ip, "127.0.0.1");
+        netState.port = 1337;
+        SetupNetwork(&netState);
+
         while(!WindowShouldClose()) {
                 delta = GetFrameTime();
+
+                ProcessInput(&gameState, &netState);
+                ProcessNetwork(&gameState, &netState);
 
                 BeginDrawing();
                         DrawFrame(&gameState, textureAtlas, delta);
@@ -44,6 +61,7 @@ void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, UNUSED floa
 
         ClearBackground(RAYWHITE);
 
+        /* Draw world */
         for(i = 0; i < gameState->worldY; i++) {
                 for(j = 0; j < gameState->worldX; j++) {
                         tile = gameState->world[i][j];
@@ -52,4 +70,41 @@ void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, UNUSED floa
                         }
                 }
         }
+
+        /* Draw objects */
+}
+
+void SetupNetwork(struct NetworkState* netState) {
+        struct sockaddr_in addr;
+
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(netState->port);
+        inet_pton(AF_INET, netState->ip, &addr.sin_addr);
+
+        netState->fd = socket(AF_INET, SOCK_STREAM, 0);
+        connect(netState->fd, (struct sockaddr *) &addr, sizeof(addr));
+}
+
+void ProcessNetwork(struct GameState* gameState, struct NetworkState* netState) {
+        struct PacketCallbacks pckcbks = {0};
+        unsigned char buffer[PACKET_MAX_BUFFER];
+        int len = 0;
+
+        len = read(netState->fd, buffer, PACKET_MAX_BUFFER);
+        PacketDecode(buffer, len, &pckcbks, gameState);
+}
+
+void ProcessInput(UNUSED struct GameState* gameState, struct NetworkState* netState) {
+        struct PacketClientInput input = {0};
+        unsigned char buffer[PACKET_MAX_BUFFER];
+        int len = 0;
+
+        if(IsKeyDown(KEY_RIGHT)) input.movementX += 127;
+        if(IsKeyDown(KEY_LEFT))  input.movementX -= 127;
+        if(IsKeyDown(KEY_UP))    input.movementY -= 127;
+        if(IsKeyDown(KEY_DOWN))  input.movementY += 127;
+        if(IsKeyDown(KEY_Z))     input.action &= 1;
+
+        len = PacketEncode(buffer, PACKET_TYPE_CLIENT_INPUT, &input);
+        write(netState->fd, buffer, len);
 }

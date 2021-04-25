@@ -71,10 +71,10 @@ struct PacketServerPlayerInfo {
 
 /*Implementation*/
 struct PacketCallbacks {
-        void (*callback[256])(void*);
+        void (*callback[256])(void*, void*);
 };
 
 int PacketEncode(unsigned char* buffer, unsigned char type, void* packet);
-int PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbacks);
+int PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbacks, void* callbackData);
 
 #endif

@@ -8,6 +8,8 @@ struct GameState {
         unsigned char worldX;
         unsigned char worldY;
         unsigned char world[WORLD_MAX_Y][WORLD_MAX_X];
+
+        float timer;
 };
 
 #endif

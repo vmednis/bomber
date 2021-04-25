@@ -40,6 +40,7 @@ int main() {
 
                 ProcessInput(&gameState, &netState);
                 ProcessNetwork(&gameState, &netState);
+                gameState.timer += delta;
 
                 BeginDrawing();
                         DrawFrame(&gameState, textureAtlas, delta);
@@ -96,17 +97,21 @@ void ProcessNetwork(struct GameState* gameState, struct NetworkState* netState) 
         }
 }
 
-void ProcessInput(UNUSED struct GameState* gameState, struct NetworkState* netState) {
+void ProcessInput(struct GameState* gameState, struct NetworkState* netState) {
         struct PacketClientInput input = {0};
         unsigned char buffer[PACKET_MAX_BUFFER];
         int len = 0;
 
-        if(IsKeyDown(KEY_RIGHT)) input.movementX += 127;
-        if(IsKeyDown(KEY_LEFT))  input.movementX -= 127;
-        if(IsKeyDown(KEY_UP))    input.movementY -= 127;
-        if(IsKeyDown(KEY_DOWN))  input.movementY += 127;
-        if(IsKeyDown(KEY_Z))     input.action &= 1;
+        if(gameState->timer > 1) {
+                if(IsKeyDown(KEY_RIGHT)) input.movementX += 127;
+                if(IsKeyDown(KEY_LEFT))  input.movementX -= 127;
+                if(IsKeyDown(KEY_UP))    input.movementY -= 127;
+                if(IsKeyDown(KEY_DOWN))  input.movementY += 127;
+                if(IsKeyDown(KEY_Z))     input.action = 1;
 
-        len = PacketEncode(buffer, PACKET_TYPE_CLIENT_INPUT, &input);
-        write(netState->fd, buffer, len);
+                len = PacketEncode(buffer, PACKET_TYPE_CLIENT_INPUT, &input);
+                write(netState->fd, buffer, len);
+
+                gameState->timer = 0;
+        }
 }

@@ -87,7 +87,7 @@ int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
         return offset;
 }
 
-int PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbacks) {
+int PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbacks, void* callbackData) {
         int ptr = 0;
         unsigned char check = 0;
         unsigned char type;
@@ -139,7 +139,7 @@ int PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbac
 
         }
 
-        callbacks->callback[type](packet);
+        callbacks->callback[type](packet, callbackData);
         return 0;
 }
 

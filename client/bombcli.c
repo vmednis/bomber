@@ -1,68 +1,117 @@
 #include <stdio.h>
 #include <string.h>
+#include <raylib.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 #include "../shared/packet.h"
-#include "../shared/shrtest.h"
+#include "../client/tests.h"
+#include "../client/network.h"
+#include "../client/gamestate.h"
+#include "../client/texture_atlas.h"
 
-static void TestPackets();
+#define UNUSED __attribute__((unused))
+#define SCREEN_WIDTH 960
+#define SCREEN_HEIGHT 540
+
+void LoadTextures(Texture2D* atlas);
+void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, float delta);
+void SetupNetwork(struct NetworkState* netState);
+void ProcessNetwork(struct GameState* gameState, struct NetworkState* netState);
+void ProcessInput(struct GameState* gameState, struct NetworkState* netState);
 
 int main() {
-        hellotest("Client");
-        TestPackets();
+        float delta;
+        struct NetworkState netState = {0};
+        struct GameState gameState = {0};
+        Texture2D textureAtlas[TEXTURE_ATLAS_SIZE] = {0};
+
+        SelfTest();
+
+        InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Bomber Client");
+        LoadTextures(textureAtlas);
+
+        strcpy(netState.ip, "127.0.0.1");
+        netState.port = 1337;
+        SetupNetwork(&netState);
+
+        while(!WindowShouldClose()) {
+                delta = GetFrameTime();
+
+                ProcessInput(&gameState, &netState);
+                ProcessNetwork(&gameState, &netState);
+                gameState.timer += delta;
+
+                BeginDrawing();
+                        DrawFrame(&gameState, textureAtlas, delta);
+                EndDrawing();
+        }
+
+        CloseWindow();
         return 0;
 }
 
-static void CallbackClientId(void * packet) {
-        struct PacketClientId *pcid = packet;
-        pcid = pcid;
+void LoadTextures(Texture2D* atlas) {
+        atlas[TEXTURE_WALL_SOLID] = LoadTexture("assets/wall_solid.png");
+        atlas[TEXTURE_WALL_BREAKABLE] = LoadTexture("assets/wall_breakable.png");
 }
 
-static void CallbackClientInput(void * packet) {
-        struct PacketClientInput *pcin = packet;
-        pcin = pcin;
+void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, UNUSED float delta) {
+        int i, j;
+        unsigned char tile;
+
+        ClearBackground(RAYWHITE);
+
+        /* Draw world */
+        for(i = 0; i < gameState->worldY; i++) {
+                for(j = 0; j < gameState->worldX; j++) {
+                        tile = gameState->world[i][j];
+                        if(tile != 0) {
+                                DrawTexture(textureAtlas[tile], j * 64, i * 64, WHITE);
+                        }
+                }
+        }
+
+        /* Draw objects */
 }
 
-static void CallbackClientMessage(void * packet) {
-        struct PacketClientMessage *pcmsg = packet;
-        pcmsg = pcmsg;
+void SetupNetwork(struct NetworkState* netState) {
+        struct sockaddr_in addr;
+
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(netState->port);
+        inet_pton(AF_INET, netState->ip, &addr.sin_addr);
+
+        netState->fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+        connect(netState->fd, (struct sockaddr *) &addr, sizeof(addr));
 }
 
-static void CallbackServerId(void * packet) {
-        struct PacketServerId *pcsid = packet;
-        pcsid = pcsid;
-}
-
-static void TestPackets() {
+void ProcessNetwork(struct GameState* gameState, struct NetworkState* netState) {
+        struct PacketCallbacks pckcbks = {0};
         unsigned char buffer[PACKET_MAX_BUFFER];
-        struct PacketClientId pcid;
-        struct PacketClientInput pcin;
-        struct PacketClientMessage pcmsg;
-        struct PacketServerId pcsid;
-        struct PacketCallbacks pccbks;
-        unsigned int len;
+        int len = 0;
 
-        pccbks.callback[PACKET_TYPE_CLIENT_IDENTIFY] = &CallbackClientId;
-        pccbks.callback[PACKET_TYPE_CLIENT_INPUT] = &CallbackClientInput;
-        pccbks.callback[PACKET_TYPE_CLIENT_MESSAGE] = &CallbackClientMessage;
-        pccbks.callback[PACKET_TYPE_SERVER_IDENTIFY] = &CallbackServerId;
+        len = read(netState->fd, buffer, PACKET_MAX_BUFFER);
+        if(len > 0) {
+                PacketDecode(buffer, len, &pckcbks, gameState);
+        }
+}
 
-        pcid.protoVersion = 0x00;
-        strcpy(pcid.playerName, "Valters");
-        pcid.playerColor = 'x';
-        len = PacketEncode(buffer, PACKET_TYPE_CLIENT_IDENTIFY, &pcid);
-        PacketDecode(buffer, len, &pccbks);
+void ProcessInput(struct GameState* gameState, struct NetworkState* netState) {
+        struct PacketClientInput input = {0};
+        unsigned char buffer[PACKET_MAX_BUFFER];
+        int len = 0;
 
-        pcin.movementX = -1;
-        pcin.movementY = 127;
-        pcin.action = 1;
-        len = PacketEncode(buffer, PACKET_TYPE_CLIENT_INPUT, &pcin);
-        PacketDecode(buffer, len, &pccbks);
+        if(gameState->timer > 1) {
+                if(IsKeyDown(KEY_RIGHT)) input.movementX += 127;
+                if(IsKeyDown(KEY_LEFT))  input.movementX -= 127;
+                if(IsKeyDown(KEY_UP))    input.movementY -= 127;
+                if(IsKeyDown(KEY_DOWN))  input.movementY += 127;
+                if(IsKeyDown(KEY_Z))     input.action = 1;
 
-        strcpy(pcmsg.message, "Hello World!");
-        len = PacketEncode(buffer, PACKET_TYPE_CLIENT_MESSAGE, &pcmsg);
-        PacketDecode(buffer, len, &pccbks);
+                len = PacketEncode(buffer, PACKET_TYPE_CLIENT_INPUT, &input);
+                write(netState->fd, buffer, len);
 
-        pcsid.protoVersion = 0;
-        pcsid.clientAccepted = 500000;
-        len = PacketEncode(buffer, PACKET_TYPE_SERVER_IDENTIFY, &pcsid);
-        PacketDecode(buffer, len, &pccbks);
+                gameState->timer = 0;
+        }
 }

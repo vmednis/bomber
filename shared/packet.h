@@ -6,6 +6,8 @@
 #define PACKET_TYPE_CLIENT_IDENTIFY 0x00
 #define PACKET_TYPE_CLIENT_INPUT 0x01
 #define PACKET_TYPE_CLIENT_MESSAGE 0x02
+#define PACKET_TYPE_SERVER_IDENTIFY 0x80
+#define PACKET_TYPE_SERVER_GAME_AREA 0x81
 
 #define PACKET_ERR_ENCODE_UNIMPLEMENTED -1
 #define PACKET_ERR_DECODE_START -1
@@ -14,7 +16,7 @@
 #define PACKET_ERR_DECODE_UNIMPLEMENTED -4
 
 /*Client Packets*/
-struct PacketClientIdentify {
+struct PacketClientId {
         unsigned char protoVersion;
         char playerName[32];
         char playerColor;
@@ -31,7 +33,7 @@ struct PacketClientMessage {
 };
 
 /*Server Packets*/
-struct PacketServerIdentification {
+struct PacketServerId {
         unsigned char protoVersion;
         unsigned int clientAccepted;
 };

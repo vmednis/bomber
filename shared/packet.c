@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <arpa/inet.h>
 #include "../shared/packet.h"
 
@@ -10,11 +11,24 @@ static int BufferUnscape(unsigned char* buffer, int len);
 static int PackPacketClientIdentify(unsigned char* buffer, void* packet);
 static int PackPacketClientInput(unsigned char* buffer, void* packet);
 static int PackPacketClientMessage(unsigned char* buffer, void* packet);
+static int PackPacketServerIdentify(unsigned char* buffer, void* packet);
+static int PackPacketServerGameAreaInfo(unsigned char* buffer, void* packet);
 
 /*Unpack*/
 static void UnpackPacketClientIdentify(unsigned char* buffer, void* packet);
 static void UnpackPacketClientInput(unsigned char* buffer, void* packet);
 static void UnpackPacketClientMessage(unsigned char* buffer, void* packet);
+static void UnpackPacketServerIdentify(unsigned char* buffer, void* packet);
+static void UnpackPacketServerGameAreaInfo(unsigned char* buffer, void* packet);
+
+/*Helper macros for working with buffers where byte precission is needed*/
+#define PACKET_BUFFER_PLACE(buffer, offset, type, value, converter) do { \
+        *(type *)((void *) (buffer + offset)) = converter(value); \
+} while(0);
+
+#define PACKET_BUFFER_PICK(buffer, offset, type, value, converter) do { \
+        value = converter(*(type *)((void *) (buffer + offset))); \
+} while(0);
 
 int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
         unsigned char tmpBuffer[PACKET_MAX_BUFFER];
@@ -42,6 +56,12 @@ int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
                         break;
                 case PACKET_TYPE_CLIENT_MESSAGE:
                         len = PackPacketClientMessage(tmpBuffer, packet);
+                        break;
+                case PACKET_TYPE_SERVER_IDENTIFY:
+                        len = PackPacketServerIdentify(tmpBuffer, packet);
+                        break;
+                case PACKET_TYPE_SERVER_GAME_AREA:
+                        len = PackPacketServerGameAreaInfo(tmpBuffer, packet);
                         break;
                 default:
                         printf("Warning! Tried to encode unimplemented package %i", type);
@@ -106,6 +126,12 @@ int PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbac
                         break;
                 case PACKET_TYPE_CLIENT_MESSAGE:
                         UnpackPacketClientMessage(buffer + 3, packet);
+                        break;
+                case PACKET_TYPE_SERVER_IDENTIFY:
+                        UnpackPacketServerIdentify(buffer + 3, packet);
+                        break;
+                case PACKET_TYPE_SERVER_GAME_AREA:
+                        UnpackPacketServerGameAreaInfo(buffer + 3, packet);
                         break;
                 default:
                         printf("Warning! Tried to decode unimplemented package %i", type);
@@ -180,7 +206,7 @@ static int BufferUnscape(unsigned char* buffer, int len) {
 }
 
 static int PackPacketClientIdentify(unsigned char* buffer, void* packet) {
-        struct PacketClientIdentify* pci = (struct PacketClientIdentify*)packet;
+        struct PacketClientId* pci = (struct PacketClientId*)packet;
         int offset = 0;
         unsigned int ptr = 0;
 
@@ -197,7 +223,7 @@ static int PackPacketClientIdentify(unsigned char* buffer, void* packet) {
         buffer[offset] = pci->playerColor;
         offset += sizeof(pci->playerColor);
 
-        return sizeof(struct PacketClientIdentify);
+        return sizeof(struct PacketClientId);
 }
 
 static int PackPacketClientInput(unsigned char* buffer, void* packet) {
@@ -230,9 +256,42 @@ static int PackPacketClientMessage(unsigned char* buffer, void* packet) {
         return sizeof(struct PacketClientMessage);
 }
 
+static int PackPacketServerIdentify(unsigned char* buffer, void* packet) {
+        struct PacketServerId* psi = (struct PacketServerId*)packet;
+        int offset = 0;
+
+        buffer[offset] = psi->protoVersion;
+        offset += sizeof(psi->protoVersion);
+
+        PACKET_BUFFER_PLACE(buffer, offset, unsigned int, psi->clientAccepted,htonl);
+        offset += sizeof(psi->clientAccepted);
+
+        return sizeof(struct PacketServerId);
+}
+
+static int PackPacketServerGameAreaInfo(unsigned char* buffer, void* packet) {
+        struct PacketGameAreaInfo* pgai = (struct PacketGameAreaInfo*)packet;
+        int ptr = 0;
+        int offset = 0;
+
+        buffer[offset] = pgai->sizeX;
+        offset += sizeof(pgai->sizeX);
+
+        buffer[offset] = pgai->sizeY;
+        offset += sizeof(pgai->sizeY);
+
+        while(ptr < pgai->sizeX * pgai->sizeY) {
+                buffer[offset + ptr] = pgai->blockIDs[ptr];
+                ptr++;
+        }
+        offset += pgai->sizeX * pgai->sizeY * sizeof(pgai->blockIDs[0]);
+
+        return offset;
+}
+
 
 static void UnpackPacketClientIdentify(unsigned char* buffer, void* packet) {
-        struct PacketClientIdentify* pci = (struct PacketClientIdentify*)packet;
+        struct PacketClientId* pci = (struct PacketClientId*)packet;
         int offset = 0;
         unsigned int ptr = 0;
 
@@ -273,4 +332,35 @@ static void UnpackPacketClientMessage(unsigned char* buffer, void* packet) {
                 ptr++;
         }
         offset += sizeof(pcm->message);
+}
+
+static void UnpackPacketServerIdentify(unsigned char* buffer, void* packet) {
+        struct PacketServerId* psi = (struct PacketServerId*)packet;
+        int offset = 0;
+
+        psi->protoVersion = buffer[offset];
+        offset += sizeof(psi->protoVersion);
+
+        /*psi->clientAccepted = ntohl(buffer[offset]);*/
+        PACKET_BUFFER_PICK(buffer, offset, unsigned int, psi->clientAccepted, ntohl);
+        offset += sizeof(psi->clientAccepted);
+}
+
+static void UnpackPacketServerGameAreaInfo(unsigned char* buffer, void* packet) {
+        struct PacketGameAreaInfo* pgai = (struct PacketGameAreaInfo*)packet;
+        int ptr = 0;
+        int offset = 0;
+
+        pgai->sizeX = buffer[offset];
+        offset += sizeof(pgai->sizeX);
+
+        pgai->sizeY = buffer[offset];
+        offset += sizeof(pgai->sizeY);
+
+        /* I really don't like this malloc, maybe we should flatten the struct */
+        pgai->blockIDs = malloc(pgai->sizeX * pgai->sizeY * sizeof(unsigned char));
+        while(ptr < pgai->sizeX * pgai->sizeY) {
+                pgai->blockIDs[ptr] = buffer[offset + ptr];
+        }
+        offset += pgai->sizeX * pgai->sizeY * sizeof(unsigned char);
 }

@@ -21,6 +21,15 @@ static void UnpackPacketClientMessage(unsigned char* buffer, void* packet);
 static void UnpackPacketServerIdentify(unsigned char* buffer, void* packet);
 static void UnpackPacketServerGameAreaInfo(unsigned char* buffer, void* packet);
 
+/*Helper macros for working with buffers where byte precission is needed*/
+#define PACKET_BUFFER_PLACE(buffer, offset, type, value, converter) do { \
+        *(type *)((void *) (buffer + offset)) = converter(value); \
+} while(0);
+
+#define PACKET_BUFFER_PICK(buffer, offset, type, value, converter) do { \
+        value = converter(*(type *)((void *) (buffer + offset))); \
+} while(0);
+
 int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
         unsigned char tmpBuffer[PACKET_MAX_BUFFER];
         int offset = 0;
@@ -254,7 +263,7 @@ static int PackPacketServerIdentify(unsigned char* buffer, void* packet) {
         buffer[offset] = psi->protoVersion;
         offset += sizeof(psi->protoVersion);
 
-        buffer[offset] = htonl(psi->clientAccepted);
+        PACKET_BUFFER_PLACE(buffer, offset, unsigned int, psi->clientAccepted,htonl);
         offset += sizeof(psi->clientAccepted);
 
         return sizeof(struct PacketServerId);
@@ -332,7 +341,8 @@ static void UnpackPacketServerIdentify(unsigned char* buffer, void* packet) {
         psi->protoVersion = buffer[offset];
         offset += sizeof(psi->protoVersion);
 
-        psi->clientAccepted = ntohl(buffer[offset]);
+        /*psi->clientAccepted = ntohl(buffer[offset]);*/
+        PACKET_BUFFER_PICK(buffer, offset, unsigned int, psi->clientAccepted, ntohl);
         offset += sizeof(psi->clientAccepted);
 }
 

@@ -26,17 +26,24 @@ static void CallbackClientMessage(void * packet) {
         pcmsg = pcmsg;
 }
 
+static void CallbackServerId(void * packet) {
+        struct PacketServerId *pcsid = packet;
+        pcsid = pcsid;
+}
+
 static void TestPackets() {
         unsigned char buffer[PACKET_MAX_BUFFER];
         struct PacketClientId pcid;
         struct PacketClientInput pcin;
         struct PacketClientMessage pcmsg;
+        struct PacketServerId pcsid;
         struct PacketCallbacks pccbks;
         unsigned int len;
 
         pccbks.callback[PACKET_TYPE_CLIENT_IDENTIFY] = &CallbackClientId;
         pccbks.callback[PACKET_TYPE_CLIENT_INPUT] = &CallbackClientInput;
         pccbks.callback[PACKET_TYPE_CLIENT_MESSAGE] = &CallbackClientMessage;
+        pccbks.callback[PACKET_TYPE_SERVER_IDENTIFY] = &CallbackServerId;
 
         pcid.protoVersion = 0x00;
         strcpy(pcid.playerName, "Valters");
@@ -52,5 +59,10 @@ static void TestPackets() {
 
         strcpy(pcmsg.message, "Hello World!");
         len = PacketEncode(buffer, PACKET_TYPE_CLIENT_MESSAGE, &pcmsg);
+        PacketDecode(buffer, len, &pccbks);
+
+        pcsid.protoVersion = 0;
+        pcsid.clientAccepted = 500000;
+        len = PacketEncode(buffer, PACKET_TYPE_SERVER_IDENTIFY, &pcsid);
         PacketDecode(buffer, len, &pccbks);
 }

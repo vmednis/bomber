@@ -23,7 +23,7 @@ static void CallbackClientMessage(void * packet, void* data) {
 
 static void TestPackets() {
         unsigned char buffer[PACKET_MAX_BUFFER];
-        struct PacketClientIdentify pcid;
+        struct PacketClientId pcid;
         struct PacketClientInput pcin;
         struct PacketClientMessage pcmsg;
         struct PacketCallbacks pccbks;

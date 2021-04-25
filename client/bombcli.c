@@ -81,7 +81,7 @@ void SetupNetwork(struct NetworkState* netState) {
         addr.sin_port = htons(netState->port);
         inet_pton(AF_INET, netState->ip, &addr.sin_addr);
 
-        netState->fd = socket(AF_INET, SOCK_STREAM, 0);
+        netState->fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
         connect(netState->fd, (struct sockaddr *) &addr, sizeof(addr));
 }
 
@@ -91,7 +91,9 @@ void ProcessNetwork(struct GameState* gameState, struct NetworkState* netState) 
         int len = 0;
 
         len = read(netState->fd, buffer, PACKET_MAX_BUFFER);
-        PacketDecode(buffer, len, &pckcbks, gameState);
+        if(len > 0) {
+                PacketDecode(buffer, len, &pckcbks, gameState);
+        }
 }
 
 void ProcessInput(UNUSED struct GameState* gameState, struct NetworkState* netState) {

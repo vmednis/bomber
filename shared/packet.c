@@ -380,7 +380,7 @@ static int PackPacketServerPlayerInfo(unsigned char* buffer, void* packet) {
         buffer[offset] = psp->playerCount;
         offset += sizeof(psp->playerCount);
 
-        while (ptr < (sizeof(psp->playerCount) + (sizeof(playerInfoSize) * psp->playerCount))) {
+        while (i < psp->playerCount))) {
                 PACKET_BUFFER_PLACE(buffer, offset, unsigned int, psp->players[i].playerID, htonl);
                 offset += sizeof(psp->players[i].playerID);
 

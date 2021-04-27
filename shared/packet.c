@@ -458,7 +458,7 @@ static void UnpackPacketServerIdentify(unsigned char* buffer, void* packet) {
         psi->protoVersion = buffer[offset];
         offset += sizeof(psi->protoVersion);
 
-        PACKET_BUFFER_PICK(buffer, offset, unsigned int, psi->clientAccepted, htonl);
+        PACKET_BUFFER_PICK(buffer, offset, unsigned int, psi->clientAccepted, ntohl);
         offset += sizeof(psi->clientAccepted);
 }
 

@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <arpa/inet.h>
+#include <arpa/inet.h>  
 #include "../shared/packet.h"
 
 /*Escape unescape*/
@@ -13,6 +13,9 @@ static int PackPacketClientInput(unsigned char* buffer, void* packet);
 static int PackPacketClientMessage(unsigned char* buffer, void* packet);
 static int PackPacketServerIdentify(unsigned char* buffer, void* packet);
 static int PackPacketServerGameAreaInfo(unsigned char* buffer, void* packet);
+static int PackPacketMovableObjects(unsigned char* buffer, void* packet);
+static int PackPacketServerMessage(unsigned char* buffer, void* packet);
+static int PackPacketServerPlayerInfo(unsigned char* buffer, void* packet);
 
 /*Unpack*/
 static void UnpackPacketClientIdentify(unsigned char* buffer, void* packet);
@@ -20,6 +23,18 @@ static void UnpackPacketClientInput(unsigned char* buffer, void* packet);
 static void UnpackPacketClientMessage(unsigned char* buffer, void* packet);
 static void UnpackPacketServerIdentify(unsigned char* buffer, void* packet);
 static void UnpackPacketServerGameAreaInfo(unsigned char* buffer, void* packet);
+static void UnpackPacketMovableObjects(unsigned char* buffer, void* packet);
+static void UnpackPacketServerMessage(unsigned char* buffer, void* packet);
+static void UnpackPacketServerPlayerInfo(unsigned char* buffer, void* packet);
+
+/*Helper macros for working with buffers where byte precission is needed*/
+#define PACKET_BUFFER_PLACE(buffer, offset, type, value, converter) do { \
+        *(type *)((void *) (buffer + offset)) = converter(value); \
+} while(0);
+
+#define PACKET_BUFFER_PICK(buffer, offset, type, value, converter) do { \
+        value = converter(*(type *)((void *) (buffer + offset))); \
+} while(0);
 
 int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
         unsigned char tmpBuffer[PACKET_MAX_BUFFER];
@@ -38,28 +53,37 @@ int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
 
         /*Packet data*/
         offset = 3;
-        switch(type) {
-                case PACKET_TYPE_CLIENT_IDENTIFY:
-                        len = PackPacketClientIdentify(tmpBuffer, packet);
-                        break;
-                case PACKET_TYPE_CLIENT_INPUT:
-                        len = PackPacketClientInput(tmpBuffer, packet);
-                        break;
-                case PACKET_TYPE_CLIENT_MESSAGE:
-                        len = PackPacketClientMessage(tmpBuffer, packet);
-                        break;
-                case PACKET_TYPE_SERVER_IDENTIFY:
-                        len = PackPacketServerIdentify(tmpBuffer, packet);
-                        break;
-                case PACKET_TYPE_SERVER_GAME_AREA:
-                        len = PackPacketServerGameAreaInfo(tmpBuffer, packet);
-                        break;
-                default:
-                        printf("Warning! Tried to encode unimplemented package %i", type);
-                        return PACKET_ERR_ENCODE_UNIMPLEMENTED;
+        switch (type) {
+        case PACKET_TYPE_CLIENT_IDENTIFY:
+                len = PackPacketClientIdentify(tmpBuffer, packet);
+                break;
+        case PACKET_TYPE_CLIENT_INPUT:
+                len = PackPacketClientInput(tmpBuffer, packet);
+                break;
+        case PACKET_TYPE_CLIENT_MESSAGE:
+                len = PackPacketClientMessage(tmpBuffer, packet);
+                break;
+        case PACKET_TYPE_SERVER_IDENTIFY:
+                len = PackPacketServerIdentify(tmpBuffer, packet);
+                break;
+        case PACKET_TYPE_SERVER_GAME_AREA:
+                len = PackPacketServerGameAreaInfo(tmpBuffer, packet);
+                break;
+        case PACKET_TYPE_MOVABLE_OBJECTS:
+                len = PackPacketMovableObjects(tmpBuffer, packet);
+                break;
+        case PACKET_TYPE_SERVER_MESSAGE:
+                len = PackPacketServerMessage(tmpBuffer, packet);
+                break;
+        case PACKET_TYPE_SERVER_PLAYER_INFO:
+                len = PackPacketServerPlayerInfo(tmpBuffer, packet);
+                break;
+        default:
+                printf("Warning! Tried to encode unimplemented package %i", type);
+                return PACKET_ERR_ENCODE_UNIMPLEMENTED;
         }
         len = BufferEscape(tmpBuffer, len);
-        while(ptr < len) {
+        while (ptr < len) {
                 buffer[offset + ptr] = tmpBuffer[ptr];
                 ptr++;
         }
@@ -67,7 +91,7 @@ int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
 
         /*Checksum*/
         ptr = 0;
-        while(ptr < offset) {
+        while (ptr < offset) {
                 check ^= buffer[ptr];
                 ptr++;
         }
@@ -78,19 +102,20 @@ int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
         return offset;
 }
 
-int PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbacks) {
+
+int PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbacks, void* callbackData) {
         int ptr = 0;
         unsigned char check = 0;
         unsigned char type;
         unsigned char packet[PACKET_MAX_BUFFER];
 
         /* Check for packet start */
-        if(!(buffer[0] == 0xff && buffer[1] == 0x00)) {
+        if (!(buffer[0] == 0xff && buffer[1] == 0x00)) {
                 return PACKET_ERR_DECODE_START;
         }
 
         /*Check if packet is of minimum length*/
-        if(len < 4) {
+        if (len < 4) {
                 return PACKET_ERR_DECODE_OTHER;
         }
 
@@ -99,7 +124,7 @@ int PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbac
                 check ^= buffer[ptr];
                 ptr++;
         }
-        if(buffer[len - 1] != check) {
+        if (buffer[len - 1] != check) {
                 return PACKET_ERR_DECODE_CHECKSUM;
         }
 
@@ -108,29 +133,37 @@ int PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbac
 
         /* Unescape and then unpack */
         len = BufferUnscape(buffer + 3, len - 4);
-        switch(type) {
-                case PACKET_TYPE_CLIENT_IDENTIFY:
-                        UnpackPacketClientIdentify(buffer + 3, packet);
-                        break;
-                case PACKET_TYPE_CLIENT_INPUT:
-                        UnpackPacketClientInput(buffer + 3, packet);
-                        break;
-                case PACKET_TYPE_CLIENT_MESSAGE:
-                        UnpackPacketClientMessage(buffer + 3, packet);
-                        break;
-                case PACKET_TYPE_SERVER_IDENTIFY:
-                        UnpackPacketServerIdentify(buffer + 3, packet);
-                        break;
-                case PACKET_TYPE_SERVER_GAME_AREA:
-                        UnpackPacketServerGameAreaInfo(buffer + 3, packet);
-                        break;
-                default:
-                        printf("Warning! Tried to decode unimplemented package %i", type);
-                        return PACKET_ERR_DECODE_UNIMPLEMENTED;
-
+        switch (type) {
+        case PACKET_TYPE_CLIENT_IDENTIFY:
+                UnpackPacketClientIdentify(buffer + 3, packet);
+                break;
+        case PACKET_TYPE_CLIENT_INPUT:
+                UnpackPacketClientInput(buffer + 3, packet);
+                break;
+        case PACKET_TYPE_CLIENT_MESSAGE:
+                UnpackPacketClientMessage(buffer + 3, packet);
+                break;
+        case PACKET_TYPE_SERVER_IDENTIFY:
+                UnpackPacketServerIdentify(buffer + 3, packet);
+                break;
+        case PACKET_TYPE_SERVER_GAME_AREA:
+                UnpackPacketServerGameAreaInfo(buffer + 3, packet);
+                break;
+        case PACKET_TYPE_MOVABLE_OBJECTS:
+                UnpackPacketMovableObjects(buffer + 3, packet);
+                break;
+        case PACKET_TYPE_SERVER_MESSAGE:
+                UnpackPacketServerMessage(buffer + 3, packet);
+                break;
+        case PACKET_TYPE_SERVER_PLAYER_INFO:
+                UnpackPacketServerPlayerInfo(buffer + 3, packet);
+                break;
+        default:
+                printf("Warning! Tried to decode unimplemented package %i", type);
+                return PACKET_ERR_DECODE_UNIMPLEMENTED;
         }
 
-        callbacks->callback[type](packet);
+        callbacks->callback[type](packet, callbackData);
         return 0;
 }
 
@@ -142,12 +175,13 @@ static int BufferEscape(unsigned char* buffer, int len) {
         int srcPtr = 0;
         int trgPtr = 0;
 
-        while(srcPtr < len) {
-                if(buffer[srcPtr] == 0xff) {
+        while (srcPtr < len) {
+                if (buffer[srcPtr] == 0xff) {
                         tmpBuffer[trgPtr] = 0xff;
                         tmpBuffer[trgPtr + 1] = 0xff;
                         trgPtr += 2;
-                } else {
+                }
+                else {
                         tmpBuffer[trgPtr] = buffer[srcPtr];
                         trgPtr++;
                 }
@@ -155,7 +189,7 @@ static int BufferEscape(unsigned char* buffer, int len) {
         }
 
         srcPtr = 0;
-        while(srcPtr < trgPtr) {
+        while (srcPtr < trgPtr) {
                 buffer[srcPtr] = tmpBuffer[srcPtr];
                 srcPtr++;
         }
@@ -174,10 +208,11 @@ static int BufferUnscape(unsigned char* buffer, int len) {
         int trgPtr = 0;
         unsigned char lastByte = 0;
 
-        while(srcPtr < len) {
-                if(lastByte == 0xff && buffer[srcPtr] == 0xff) {
+        while (srcPtr < len) {
+                if (lastByte == 0xff && buffer[srcPtr] == 0xff) {
                         buffer[srcPtr] = 0;
-                } else {
+                }
+                else {
                         /*This will accept invalid escapes as just byte sequences*/
                         tmpBuffer[trgPtr] = buffer[srcPtr];
                         trgPtr++;
@@ -187,7 +222,7 @@ static int BufferUnscape(unsigned char* buffer, int len) {
         }
 
         srcPtr = 0;
-        while(srcPtr < trgPtr) {
+        while (srcPtr < trgPtr) {
                 buffer[srcPtr] = tmpBuffer[srcPtr];
                 srcPtr++;
         }
@@ -205,7 +240,7 @@ static int PackPacketClientIdentify(unsigned char* buffer, void* packet) {
         offset += sizeof(pci->protoVersion);
 
         ptr = 0;
-        while(ptr < sizeof(pci->playerName)) {
+        while (ptr < sizeof(pci->playerName)) {
                 buffer[offset + ptr] = pci->playerName[ptr];
                 ptr++;
         }
@@ -238,7 +273,7 @@ static int PackPacketClientMessage(unsigned char* buffer, void* packet) {
         int offset = 0;
         unsigned int ptr = 0;
 
-        while(ptr < sizeof(pcm->message)) {
+        while (ptr < sizeof(pcm->message)) {
                 buffer[offset + ptr] = pcm->message[ptr];
                 ptr++;
         }
@@ -254,7 +289,7 @@ static int PackPacketServerIdentify(unsigned char* buffer, void* packet) {
         buffer[offset] = psi->protoVersion;
         offset += sizeof(psi->protoVersion);
 
-        buffer[offset] = htonl(psi->clientAccepted);
+        PACKET_BUFFER_PLACE(buffer, offset, unsigned int, psi->clientAccepted, htonl);
         offset += sizeof(psi->clientAccepted);
 
         return sizeof(struct PacketServerId);
@@ -271,15 +306,106 @@ static int PackPacketServerGameAreaInfo(unsigned char* buffer, void* packet) {
         buffer[offset] = pgai->sizeY;
         offset += sizeof(pgai->sizeY);
 
-        while(ptr < pgai->sizeX * pgai->sizeY) {
+        while (ptr < MAX_BLOCK_IDS) {
                 buffer[offset + ptr] = pgai->blockIDs[ptr];
                 ptr++;
         }
-        offset += pgai->sizeX * pgai->sizeY * sizeof(pgai->blockIDs[0]);
+        offset += MAX_BLOCK_IDS;
 
         return offset;
 }
 
+static int PackPacketMovableObjects(unsigned char* buffer, void* packet) {
+        struct PacketMovableObjects* pmo = (struct PacketMovableObjects*)packet;
+        int offset = 0;
+        int ptr = 0;
+        int tmp[3], i = 0;
+        struct PacketMovableObjectInfo objectInfoSize;
+
+        buffer[offset] = pmo->objectCount;
+        offset += sizeof(pmo->objectCount);
+
+        while (ptr < (sizeof(pmo->objectCount) + (sizeof(objectInfoSize) * pmo->objectCount))) {
+                buffer[offset] = pmo->movableObjects[i].objectType;
+                offset += sizeof(pmo->movableObjects[i].objectType);
+
+                PACKET_BUFFER_PLACE(buffer, offset, unsigned int, pmo->movableObjects[i].objectID, htonl);
+                offset += sizeof(pmo->movableObjects[i].objectID);
+
+                tmp[2] = *(int*)&(pmo->movableObjects[i].objectX);
+                PACKET_BUFFER_PLACE(buffer, offset, unsigned int, tmp[2], htonl);
+                offset += sizeof(pmo->movableObjects[i].objectX);
+
+                tmp[2] = *(int*)&(pmo->movableObjects[i].objectY);
+                PACKET_BUFFER_PLACE(buffer, offset, unsigned int, tmp[2], htonl);
+                offset += sizeof(pmo->movableObjects[i].objectY);
+
+                buffer[offset] = pmo->movableObjects[i].movement;
+                offset += sizeof(pmo->movableObjects[i].movement);
+
+                buffer[offset] = pmo->movableObjects[i].status;
+                offset += sizeof(pmo->movableObjects[i].status);
+
+                ptr += sizeof(pmo->movableObjects[i]);
+                i++;
+        }
+        offset += sizeof(pmo->movableObjects);
+        return offset;
+}
+
+static int PackPacketServerMessage(unsigned char* buffer, void* packet) {
+        struct PacketServerMessage* psm = (struct PacketServerMessage*)packet;
+        int offset = 0;
+        int ptr = 0;
+
+        buffer[offset] = psm->messageType;
+        offset += sizeof(psm->messageType);
+
+        while (ptr < sizeof(psm->message)) {
+                buffer[offset + ptr] = psm->message[ptr];
+                ptr++;
+        }
+        offset += sizeof(psm->message);
+
+        return sizeof(struct PacketServerMessage);
+}
+
+static int PackPacketServerPlayerInfo(unsigned char* buffer, void* packet) {
+        struct PacketServerPlayers* psp = (struct PacketServerPlayers*)packet;
+        int offset = 0;
+        int ptr = 0, ptr2;
+        int i = 0;
+        struct PacketServerPlayerInfo playerInfoSize;
+
+        buffer[offset] = psp->playerCount;
+        offset += sizeof(psp->playerCount);
+
+        while (ptr < (sizeof(psp->playerCount) + (sizeof(playerInfoSize) * psp->playerCount))) {
+                PACKET_BUFFER_PLACE(buffer, offset, unsigned int, psp->players[i].playerID, htonl);
+                offset += sizeof(psp->players[i].playerID);
+
+                ptr2 = 0;
+                while (ptr2 < sizeof(psp->players->playerName)) {
+                        buffer[offset + ptr2] = psp->players[i].playerName[ptr2];
+                        ptr2++;
+                }
+                offset += sizeof(psp->players->playerName);
+
+                buffer[offset] = psp->players[i].playerColor;
+                offset += sizeof(psp->players[i].playerColor);
+
+                PACKET_BUFFER_PLACE(buffer, offset, unsigned int, psp->players[i].playerPoints, htonl);
+                offset += sizeof(psp->players[i].playerPoints);
+
+                buffer[offset] = psp->players[i].playerLives;
+                offset += sizeof(psp->players[i].playerLives);
+
+                ptr += sizeof(psp->players[i]);
+                i++;
+        }
+        offset += sizeof(psp->players);
+        return offset;
+}
 
 static void UnpackPacketClientIdentify(unsigned char* buffer, void* packet) {
         struct PacketClientId* pci = (struct PacketClientId*)packet;
@@ -289,7 +415,7 @@ static void UnpackPacketClientIdentify(unsigned char* buffer, void* packet) {
         pci->protoVersion = buffer[offset];
         offset += sizeof(pci->protoVersion);
 
-        while(ptr < sizeof(pci->playerName)) {
+        while (ptr < sizeof(pci->playerName)) {
                 pci->playerName[ptr] = buffer[offset + ptr];
                 ptr++;
         }
@@ -318,7 +444,7 @@ static void UnpackPacketClientMessage(unsigned char* buffer, void* packet) {
         int offset = 0;
         unsigned int ptr = 0;
 
-        while(ptr < sizeof(pcm->message)) {
+        while (ptr < sizeof(pcm->message)) {
                 pcm->message[ptr] = buffer[offset + ptr];
                 ptr++;
         }
@@ -332,7 +458,7 @@ static void UnpackPacketServerIdentify(unsigned char* buffer, void* packet) {
         psi->protoVersion = buffer[offset];
         offset += sizeof(psi->protoVersion);
 
-        psi->clientAccepted = ntohl(buffer[offset]);
+        PACKET_BUFFER_PICK(buffer, offset, unsigned int, psi->clientAccepted, htonl);
         offset += sizeof(psi->clientAccepted);
 }
 
@@ -347,10 +473,96 @@ static void UnpackPacketServerGameAreaInfo(unsigned char* buffer, void* packet) 
         pgai->sizeY = buffer[offset];
         offset += sizeof(pgai->sizeY);
 
-        /* I really don't like this malloc, maybe we should flatten the struct */
-        pgai->blockIDs = malloc(pgai->sizeX * pgai->sizeY * sizeof(unsigned char));
-        while(ptr < pgai->sizeX * pgai->sizeY) {
+        pgai->blockIDs[MAX_BLOCK_IDS] = buffer[offset];
+        while (ptr < MAX_BLOCK_IDS) {
                 pgai->blockIDs[ptr] = buffer[offset + ptr];
+                ptr += sizeof(pgai->blockIDs[0]);
         }
-        offset += pgai->sizeX * pgai->sizeY * sizeof(unsigned char);
+        offset += MAX_BLOCK_IDS;
+}
+
+static void UnpackPacketMovableObjects(unsigned char* buffer, void* packet) {
+        struct PacketMovableObjects* pmo = (struct PacketMovableObjects*)packet;
+        int offset = 0;
+        int ptr = 0;
+        int x, y, i = 0;
+
+        pmo->objectCount = buffer[offset];
+        offset += sizeof(pmo->objectCount);
+
+        while (ptr < MAX_MOVABLE_OBJECTS) {
+                pmo->movableObjects[i].objectType = buffer[offset];
+                offset += sizeof(pmo->movableObjects->objectType);
+
+                PACKET_BUFFER_PICK(buffer, offset, unsigned int, pmo->movableObjects[i].objectID, htonl);
+                offset += sizeof(pmo->movableObjects->objectID);
+
+                PACKET_BUFFER_PICK(buffer, offset, unsigned int, x, htonl);
+                pmo->movableObjects[i].objectX = *(float*)&x;
+                offset += sizeof(pmo->movableObjects->objectX);
+
+                PACKET_BUFFER_PICK(buffer, offset, unsigned int, y, htonl);
+                pmo->movableObjects[i].objectY = *(float*)&y;
+                offset += sizeof(pmo->movableObjects->objectY);
+
+                pmo->movableObjects[i].movement = buffer[offset];
+                offset += sizeof(pmo->movableObjects->movement);
+
+                pmo->movableObjects[i].status = buffer[offset];
+                offset += sizeof(pmo->movableObjects->status);
+
+                ptr += sizeof(pmo->movableObjects[0]);
+                i++;
+        }
+        offset += sizeof(pmo->movableObjects);
+}
+
+static void UnpackPacketServerMessage(unsigned char* buffer, void* packet) {
+        struct PacketServerMessage* psm = (struct PacketServerMessage*)packet;
+        int offset = 0;
+        unsigned int ptr = 0;
+
+        psm->messageType = buffer[offset];
+        offset += sizeof(psm->messageType);
+
+        while (ptr < sizeof(psm->message)) {
+                psm->message[ptr] = buffer[offset + ptr];
+                ptr++;
+        }
+        offset += sizeof(psm->message);
+}
+
+static void UnpackPacketServerPlayerInfo(unsigned char* buffer, void* packet) {
+        struct PacketServerPlayers* psp = (struct PacketServerPlayers*)packet;
+        int offset = 0;
+        int ptr = 0, ptr2, i = 0;
+
+        psp->playerCount = buffer[offset];
+        offset += sizeof(psp->playerCount);
+        offset = offset;
+
+        while (ptr < MAX_MOVABLE_OBJECTS) {
+                PACKET_BUFFER_PICK(buffer, offset, unsigned int, psp->players[i].playerID, htonl);
+                offset += sizeof(psp->players->playerID);
+
+                ptr2 = 0;
+                while (ptr2 < sizeof(psp->players->playerName)) {
+                        psp->players[i].playerName[ptr2] = buffer[offset + ptr2];
+                        ptr2++;
+                }
+                offset += sizeof(psp->players->playerName);
+
+                psp->players[i].playerColor = buffer[offset];
+                offset += sizeof(psp->players->playerColor);
+
+                PACKET_BUFFER_PICK(buffer, offset, unsigned int, psp->players[i].playerPoints, htonl);
+                offset += sizeof(psp->players[i].playerPoints);
+
+                psp->players[i].playerLives = buffer[offset];
+                offset += sizeof(psp->players->playerLives);
+
+                ptr += sizeof(psp->players[i]);
+                i++;
+        }
+        offset += sizeof(psp->players);
 }

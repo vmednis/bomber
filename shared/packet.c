@@ -325,7 +325,7 @@ static int PackPacketMovableObjects(unsigned char* buffer, void* packet) {
         buffer[offset] = pmo->objectCount;
         offset += sizeof(pmo->objectCount);
 
-        while (ptr < (sizeof(pmo->objectCount) + (sizeof(objectInfoSize) * pmo->objectCount))) {
+        while (i < pmo->objectCount))) {
                 buffer[offset] = pmo->movableObjects[i].objectType;
                 offset += sizeof(pmo->movableObjects[i].objectType);
 

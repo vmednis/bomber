@@ -2,12 +2,18 @@
 #define PACKET_H
 
 #define PACKET_MAX_BUFFER 1024*1024
+#define MAX_BLOCK_IDS (256*256)
+#define MAX_CLIENTS 256
+#define MAX_MOVABLE_OBJECTS 1024
 
 #define PACKET_TYPE_CLIENT_IDENTIFY 0x00
 #define PACKET_TYPE_CLIENT_INPUT 0x01
 #define PACKET_TYPE_CLIENT_MESSAGE 0x02
 #define PACKET_TYPE_SERVER_IDENTIFY 0x80
 #define PACKET_TYPE_SERVER_GAME_AREA 0x81
+#define PACKET_TYPE_MOVABLE_OBJECTS 0x82
+#define PACKET_TYPE_SERVER_MESSAGE 0x83
+#define PACKET_TYPE_SERVER_PLAYER_INFO 0x84
 
 #define PACKET_ERR_ENCODE_UNIMPLEMENTED -1
 #define PACKET_ERR_DECODE_START -1
@@ -41,7 +47,7 @@ struct PacketServerId {
 struct PacketGameAreaInfo {
         unsigned char sizeX;
         unsigned char sizeY;
-        unsigned char* blockIDs;
+        unsigned char blockIDs[MAX_BLOCK_IDS];
 };
 
 struct PacketMovableObjectInfo {
@@ -50,11 +56,12 @@ struct PacketMovableObjectInfo {
         float objectX;
         float objectY;
         char movement;
+        unsigned char status;  
 };
 
 struct PacketMovableObjects {
         unsigned char objectCount;
-        struct PacketMovableObjectInfo *movableObjects;
+        struct PacketMovableObjectInfo movableObjects[MAX_MOVABLE_OBJECTS * sizeof(struct PacketMovableObjectInfo)];
 };
 
 struct PacketServerMessage {
@@ -63,12 +70,16 @@ struct PacketServerMessage {
 };
 
 struct PacketServerPlayerInfo {
-        unsigned int playerCount;
-        unsigned int playrID;
+        unsigned int playerID;
         char playerName[32];
         char playerColor;
         unsigned int playerPoints;
         unsigned char playerLives;
+};
+
+struct PacketServerPlayers {
+        unsigned int playerCount;
+        struct PacketServerPlayerInfo players[MAX_CLIENTS * sizeof(struct PacketServerPlayerInfo)];
 };
 
 /*Implementation*/

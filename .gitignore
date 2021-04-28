@@ -4,3 +4,6 @@ bombsrv
 .vscode/configurationCache.log
 .vscode/dryrun.log
 .vscode/targets.log
+.vscode/settings.json
+.vscode/tasks.json
+.vscode/launch.json

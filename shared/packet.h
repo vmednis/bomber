@@ -56,7 +56,7 @@ struct PacketMovableObjectInfo {
         float objectX;
         float objectY;
         char movement;
-        unsigned char status;  
+        unsigned char status;
 };
 
 struct PacketMovableObjects {

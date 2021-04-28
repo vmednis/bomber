@@ -560,5 +560,4 @@ static void UnpackPacketServerPlayerInfo(unsigned char* buffer, void* packet) {
                 ptr += sizeof(psp->players[i]);
                 i++;
         }
-        offset += sizeof(psp->players);
 }

@@ -257,7 +257,7 @@ static int PackPacketClientIdentify(unsigned char* buffer, void* packet) {
         buffer[offset] = pci->playerColor;
         offset += sizeof(pci->playerColor);
 
-        return sizeof(struct PacketClientId);
+        return offset;
 }
 
 static int PackPacketClientInput(unsigned char* buffer, void* packet) {
@@ -273,7 +273,7 @@ static int PackPacketClientInput(unsigned char* buffer, void* packet) {
         buffer[offset] = pci->action;
         offset += sizeof(pci->action);
 
-        return sizeof(struct PacketClientInput);
+        return offset;
 }
 
 static int PackPacketClientMessage(unsigned char* buffer, void* packet) {
@@ -287,7 +287,7 @@ static int PackPacketClientMessage(unsigned char* buffer, void* packet) {
         }
         offset += sizeof(pcm->message);
 
-        return sizeof(struct PacketClientMessage);
+        return offset;
 }
 
 static int PackPacketServerIdentify(unsigned char* buffer, void* packet) {
@@ -300,7 +300,7 @@ static int PackPacketServerIdentify(unsigned char* buffer, void* packet) {
         PACKET_BUFFER_PLACE(buffer, offset, unsigned int, psi->clientAccepted, htonl);
         offset += sizeof(psi->clientAccepted);
 
-        return sizeof(struct PacketServerId);
+        return offset;
 }
 
 static int PackPacketServerGameAreaInfo(unsigned char* buffer, void* packet) {
@@ -362,7 +362,7 @@ static int PackPacketMovableObjects(unsigned char* buffer, void* packet) {
 static int PackPacketServerMessage(unsigned char* buffer, void* packet) {
         struct PacketServerMessage* psm = (struct PacketServerMessage*)packet;
         int offset = 0;
-        int ptr = 0;
+        unsigned int ptr = 0;
 
         buffer[offset] = psm->messageType;
         offset += sizeof(psm->messageType);
@@ -379,8 +379,8 @@ static int PackPacketServerMessage(unsigned char* buffer, void* packet) {
 static int PackPacketServerPlayerInfo(unsigned char* buffer, void* packet) {
         struct PacketServerPlayers* psp = (struct PacketServerPlayers*)packet;
         int offset = 0;
-        int ptr = 0, ptr2;
-        int i = 0;
+        unsigned int ptr = 0;
+        unsigned int i = 0;
 
         buffer[offset] = psp->playerCount;
         offset += sizeof(psp->playerCount);
@@ -389,10 +389,10 @@ static int PackPacketServerPlayerInfo(unsigned char* buffer, void* packet) {
                 PACKET_BUFFER_PLACE(buffer, offset, unsigned int, psp->players[i].playerID, htonl);
                 offset += sizeof(psp->players[i].playerID);
 
-                ptr2 = 0;
-                while (ptr2 < sizeof(psp->players->playerName)) {
-                        buffer[offset + ptr2] = psp->players[i].playerName[ptr2];
-                        ptr2++;
+                ptr = 0;
+                while (ptr < sizeof(psp->players->playerName)) {
+                        buffer[offset + ptr] = psp->players[i].playerName[ptr];
+                        ptr++;
                 }
                 offset += sizeof(psp->players->playerName);
 
@@ -405,10 +405,9 @@ static int PackPacketServerPlayerInfo(unsigned char* buffer, void* packet) {
                 buffer[offset] = psp->players[i].playerLives;
                 offset += sizeof(psp->players[i].playerLives);
 
-                ptr += sizeof(psp->players[i]);
                 i++;
         }
-        offset += sizeof(psp->players);
+
         return offset;
 }
 
@@ -539,7 +538,8 @@ static void UnpackPacketServerMessage(unsigned char* buffer, void* packet) {
 static void UnpackPacketServerPlayerInfo(unsigned char* buffer, void* packet) {
         struct PacketServerPlayers* psp = (struct PacketServerPlayers*)packet;
         int offset = 0;
-        int ptr = 0, ptr2, i = 0;
+        unsigned int i = 0;
+        unsigned int ptr = 0;
 
         psp->playerCount = buffer[offset];
         offset += sizeof(psp->playerCount);
@@ -549,10 +549,10 @@ static void UnpackPacketServerPlayerInfo(unsigned char* buffer, void* packet) {
                 PACKET_BUFFER_PICK(buffer, offset, unsigned int, psp->players[i].playerID, ntohl);
                 offset += sizeof(psp->players->playerID);
 
-                ptr2 = 0;
-                while (ptr2 < sizeof(psp->players->playerName)) {
-                        psp->players[i].playerName[ptr2] = buffer[offset + ptr2];
-                        ptr2++;
+                ptr = 0;
+                while (ptr < sizeof(psp->players->playerName)) {
+                        psp->players[i].playerName[ptr] = buffer[offset + ptr];
+                        ptr++;
                 }
                 offset += sizeof(psp->players->playerName);
 
@@ -565,7 +565,6 @@ static void UnpackPacketServerPlayerInfo(unsigned char* buffer, void* packet) {
                 psp->players[i].playerLives = buffer[offset];
                 offset += sizeof(psp->players->playerLives);
 
-                ptr += sizeof(psp->players[i]);
                 i++;
         }
 }

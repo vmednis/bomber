@@ -36,6 +36,15 @@ static void UnpackPacketServerPlayerInfo(unsigned char* buffer, void* packet);
         value = converter(*(type *)((void *) (buffer + offset))); \
 } while(0);
 
+/*Helper macros for working with buffers where byte precission is needed*/
+#define PACKET_BUFFER_PLACE(buffer, offset, type, value, converter) do { \
+        *(type *)((void *) (buffer + offset)) = converter(value); \
+} while(0);
+
+#define PACKET_BUFFER_PICK(buffer, offset, type, value, converter) do { \
+        value = converter(*(type *)((void *) (buffer + offset))); \
+} while(0);
+
 int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
         unsigned char tmpBuffer[PACKET_MAX_BUFFER];
         int offset = 0;
@@ -101,7 +110,6 @@ int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
         offset += 1;
         return offset;
 }
-
 
 int PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbacks, void* callbackData) {
         int ptr = 0;

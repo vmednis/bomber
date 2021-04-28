@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <arpa/inet.h>  
+#include <arpa/inet.h>
 #include "../shared/packet.h"
 
 /*Escape unescape*/
@@ -306,11 +306,11 @@ static int PackPacketServerGameAreaInfo(unsigned char* buffer, void* packet) {
         buffer[offset] = pgai->sizeY;
         offset += sizeof(pgai->sizeY);
 
-        while (ptr < MAX_BLOCK_IDS) {
+        while (ptr < pgai->sizeX * pgai->sizeY) {
                 buffer[offset + ptr] = pgai->blockIDs[ptr];
                 ptr++;
         }
-        offset += MAX_BLOCK_IDS;
+        offset += pgai->sizeX * pgai->sizeY * sizeof(pgai->blockIDs[0]);
 
         return offset;
 }
@@ -320,12 +320,11 @@ static int PackPacketMovableObjects(unsigned char* buffer, void* packet) {
         int offset = 0;
         int ptr = 0;
         int tmp[3], i = 0;
-        struct PacketMovableObjectInfo objectInfoSize;
 
         buffer[offset] = pmo->objectCount;
         offset += sizeof(pmo->objectCount);
 
-        while (ptr < (sizeof(pmo->objectCount) + (sizeof(objectInfoSize) * pmo->objectCount))) {
+        while (i < pmo->objectCount) {
                 buffer[offset] = pmo->movableObjects[i].objectType;
                 offset += sizeof(pmo->movableObjects[i].objectType);
 
@@ -349,7 +348,6 @@ static int PackPacketMovableObjects(unsigned char* buffer, void* packet) {
                 ptr += sizeof(pmo->movableObjects[i]);
                 i++;
         }
-        offset += sizeof(pmo->movableObjects);
         return offset;
 }
 
@@ -375,12 +373,11 @@ static int PackPacketServerPlayerInfo(unsigned char* buffer, void* packet) {
         int offset = 0;
         int ptr = 0, ptr2;
         int i = 0;
-        struct PacketServerPlayerInfo playerInfoSize;
 
         buffer[offset] = psp->playerCount;
         offset += sizeof(psp->playerCount);
 
-        while (ptr < (sizeof(psp->playerCount) + (sizeof(playerInfoSize) * psp->playerCount))) {
+        while (i < psp->playerCount) {
                 PACKET_BUFFER_PLACE(buffer, offset, unsigned int, psp->players[i].playerID, htonl);
                 offset += sizeof(psp->players[i].playerID);
 
@@ -458,7 +455,7 @@ static void UnpackPacketServerIdentify(unsigned char* buffer, void* packet) {
         psi->protoVersion = buffer[offset];
         offset += sizeof(psi->protoVersion);
 
-        PACKET_BUFFER_PICK(buffer, offset, unsigned int, psi->clientAccepted, htonl);
+        PACKET_BUFFER_PICK(buffer, offset, unsigned int, psi->clientAccepted, ntohl);
         offset += sizeof(psi->clientAccepted);
 }
 
@@ -473,12 +470,12 @@ static void UnpackPacketServerGameAreaInfo(unsigned char* buffer, void* packet) 
         pgai->sizeY = buffer[offset];
         offset += sizeof(pgai->sizeY);
 
-        pgai->blockIDs[MAX_BLOCK_IDS] = buffer[offset];
-        while (ptr < MAX_BLOCK_IDS) {
+        pgai->blockIDs[pgai->sizeX * pgai->sizeY] = buffer[offset];
+        while (ptr < pgai->sizeX * pgai->sizeY) {
                 pgai->blockIDs[ptr] = buffer[offset + ptr];
                 ptr += sizeof(pgai->blockIDs[0]);
         }
-        offset += MAX_BLOCK_IDS;
+        offset += pgai->sizeX * pgai->sizeY;
 }
 
 static void UnpackPacketMovableObjects(unsigned char* buffer, void* packet) {
@@ -490,18 +487,18 @@ static void UnpackPacketMovableObjects(unsigned char* buffer, void* packet) {
         pmo->objectCount = buffer[offset];
         offset += sizeof(pmo->objectCount);
 
-        while (ptr < MAX_MOVABLE_OBJECTS) {
+        while (i < pmo->objectCount) {
                 pmo->movableObjects[i].objectType = buffer[offset];
                 offset += sizeof(pmo->movableObjects->objectType);
 
-                PACKET_BUFFER_PICK(buffer, offset, unsigned int, pmo->movableObjects[i].objectID, htonl);
+                PACKET_BUFFER_PICK(buffer, offset, unsigned int, pmo->movableObjects[i].objectID, ntohl);
                 offset += sizeof(pmo->movableObjects->objectID);
 
-                PACKET_BUFFER_PICK(buffer, offset, unsigned int, x, htonl);
+                PACKET_BUFFER_PICK(buffer, offset, unsigned int, x, ntohl);
                 pmo->movableObjects[i].objectX = *(float*)&x;
                 offset += sizeof(pmo->movableObjects->objectX);
 
-                PACKET_BUFFER_PICK(buffer, offset, unsigned int, y, htonl);
+                PACKET_BUFFER_PICK(buffer, offset, unsigned int, y, ntohl);
                 pmo->movableObjects[i].objectY = *(float*)&y;
                 offset += sizeof(pmo->movableObjects->objectY);
 
@@ -514,7 +511,6 @@ static void UnpackPacketMovableObjects(unsigned char* buffer, void* packet) {
                 ptr += sizeof(pmo->movableObjects[0]);
                 i++;
         }
-        offset += sizeof(pmo->movableObjects);
 }
 
 static void UnpackPacketServerMessage(unsigned char* buffer, void* packet) {
@@ -541,8 +537,8 @@ static void UnpackPacketServerPlayerInfo(unsigned char* buffer, void* packet) {
         offset += sizeof(psp->playerCount);
         offset = offset;
 
-        while (ptr < MAX_MOVABLE_OBJECTS) {
-                PACKET_BUFFER_PICK(buffer, offset, unsigned int, psp->players[i].playerID, htonl);
+        while (i < psp->playerCount) {
+                PACKET_BUFFER_PICK(buffer, offset, unsigned int, psp->players[i].playerID, ntohl);
                 offset += sizeof(psp->players->playerID);
 
                 ptr2 = 0;
@@ -555,7 +551,7 @@ static void UnpackPacketServerPlayerInfo(unsigned char* buffer, void* packet) {
                 psp->players[i].playerColor = buffer[offset];
                 offset += sizeof(psp->players->playerColor);
 
-                PACKET_BUFFER_PICK(buffer, offset, unsigned int, psp->players[i].playerPoints, htonl);
+                PACKET_BUFFER_PICK(buffer, offset, unsigned int, psp->players[i].playerPoints, ntohl);
                 offset += sizeof(psp->players[i].playerPoints);
 
                 psp->players[i].playerLives = buffer[offset];

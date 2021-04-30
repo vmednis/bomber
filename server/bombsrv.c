@@ -80,16 +80,16 @@ static void TestPackets() {
         objects[1].movement = 3;
         objects[1].status = 4;
 
-        objects[2].objectType = 0x01;
+        /* objects[2].objectType = 0x01;
         objects[2].objectID = 3;
         objects[2].objectX = 12.012;
         objects[2].objectY = -3.04;
         objects[2].movement = 20;
-        objects[2].status = 11;
+        objects[2].status = 11; */
 
-        pmo.objectCount = 3;
+        pmo.objectCount = 2;
         memcpy(pmo.movableObjects, objects, sizeof(objects));
-        len = PacketEncode(buffer, PACKET_TYPE_MOVABLE_OBJECTS, &pmo);
+        len = PacketEncode(buffer, PACKET_TYPE_MOVABLE_OBJECTS, &pmo); /* 31 */
         PacketDecode(buffer, len, &pccbks, NULL);
 
         psm.messageType = 2;

@@ -36,20 +36,11 @@ static void UnpackPacketServerPlayerInfo(unsigned char* buffer, void* packet);
         value = converter(*(type *)((void *) (buffer + offset))); \
 } while(0);
 
-/*Helper macros for working with buffers where byte precission is needed*/
-#define PACKET_BUFFER_PLACE(buffer, offset, type, value, converter) do { \
-        *(type *)((void *) (buffer + offset)) = converter(value); \
-} while(0);
-
-#define PACKET_BUFFER_PICK(buffer, offset, type, value, converter) do { \
-        value = converter(*(type *)((void *) (buffer + offset))); \
-} while(0);
-
 int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
         unsigned char tmpBuffer[PACKET_MAX_BUFFER];
         int offset = 0;
         int ptr = 0;
-        int len = 0;
+        unsigned int len = 0;
         unsigned char check = 0;
 
         /*Packet beginning sequence*/
@@ -60,8 +51,12 @@ int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
         offset = 2;
         buffer[offset + 0] = type;
 
-        /*Packet data*/
+        /*Packet length*/
         offset = 3;
+        buffer[offset + 0] = len;
+
+        /*Packet data*/
+        offset = offset + sizeof(unsigned int);
         switch (type) {
         case PACKET_TYPE_CLIENT_IDENTIFY:
                 len = PackPacketClientIdentify(tmpBuffer, packet);
@@ -92,6 +87,7 @@ int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
                 return PACKET_ERR_ENCODE_UNIMPLEMENTED;
         }
         len = BufferEscape(tmpBuffer, len);
+        PACKET_BUFFER_PLACE(buffer, 3, unsigned int, len, htonl);
         while (ptr < len) {
                 buffer[offset + ptr] = tmpBuffer[ptr];
                 ptr++;
@@ -116,6 +112,7 @@ int PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbac
         unsigned char check = 0;
         unsigned char type;
         unsigned char packet[PACKET_MAX_BUFFER];
+        unsigned int length;
 
         /* Check for packet start */
         if (!(buffer[0] == 0xff && buffer[1] == 0x00)) {
@@ -139,32 +136,37 @@ int PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbac
         /* Get the type */
         type = buffer[2];
 
+        /* Get the length */
+        length = buffer[3];
+        length = length;
+
         /* Unescape and then unpack */
-        len = BufferUnscape(buffer + 3, len - 4);
+        PACKET_BUFFER_PICK(buffer, 3, unsigned int, length, ntohl);
+        len = BufferUnscape(buffer + 7, len - 4);
         switch (type) {
         case PACKET_TYPE_CLIENT_IDENTIFY:
-                UnpackPacketClientIdentify(buffer + 3, packet);
+                UnpackPacketClientIdentify(buffer + 3 + sizeof(unsigned int), packet);
                 break;
         case PACKET_TYPE_CLIENT_INPUT:
-                UnpackPacketClientInput(buffer + 3, packet);
+                UnpackPacketClientInput(buffer + 3 + sizeof(unsigned int), packet);
                 break;
         case PACKET_TYPE_CLIENT_MESSAGE:
-                UnpackPacketClientMessage(buffer + 3, packet);
+                UnpackPacketClientMessage(buffer + 3 + sizeof(unsigned int), packet);
                 break;
         case PACKET_TYPE_SERVER_IDENTIFY:
-                UnpackPacketServerIdentify(buffer + 3, packet);
+                UnpackPacketServerIdentify(buffer + 3 + sizeof(unsigned int), packet);
                 break;
         case PACKET_TYPE_SERVER_GAME_AREA:
-                UnpackPacketServerGameAreaInfo(buffer + 3, packet);
+                UnpackPacketServerGameAreaInfo(buffer + 3 + sizeof(unsigned int), packet);
                 break;
         case PACKET_TYPE_MOVABLE_OBJECTS:
-                UnpackPacketMovableObjects(buffer + 3, packet);
+                UnpackPacketMovableObjects(buffer + 3 + sizeof(unsigned int), packet);
                 break;
         case PACKET_TYPE_SERVER_MESSAGE:
-                UnpackPacketServerMessage(buffer + 3, packet);
+                UnpackPacketServerMessage(buffer + 3 + sizeof(unsigned int), packet);
                 break;
         case PACKET_TYPE_SERVER_PLAYER_INFO:
-                UnpackPacketServerPlayerInfo(buffer + 3, packet);
+                UnpackPacketServerPlayerInfo(buffer + 3 + sizeof(unsigned int), packet);
                 break;
         default:
                 printf("Warning! Tried to decode unimplemented package %i", type);

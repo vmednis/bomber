@@ -67,6 +67,9 @@ int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
         case PACKET_TYPE_CLIENT_MESSAGE:
                 len = PackPacketClientMessage(tmpBuffer, packet);
                 break;
+        case PACKET_TYPE_CLIENT_PING_ANSWER:
+                len = 0;
+                break;
         case PACKET_TYPE_SERVER_IDENTIFY:
                 len = PackPacketServerIdentify(tmpBuffer, packet);
                 break;
@@ -81,6 +84,9 @@ int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
                 break;
         case PACKET_TYPE_SERVER_PLAYER_INFO:
                 len = PackPacketServerPlayerInfo(tmpBuffer, packet);
+                break;
+        case PACKET_TYPE_SERVER_PING:
+                len = 0;
                 break;
         default:
                 printf("Warning! Tried to encode unimplemented package %i", type);

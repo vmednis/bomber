@@ -93,7 +93,6 @@ int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
                 return PACKET_ERR_ENCODE_UNIMPLEMENTED;
         }
         len = BufferEscape(tmpBuffer, len);
-        PACKET_BUFFER_PLACE(buffer, 3, unsigned int, len, htonl);
         while (ptr < len) {
                 buffer[offset + ptr] = tmpBuffer[ptr];
                 ptr++;
@@ -108,6 +107,7 @@ int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
         }
         buffer[offset] = check;
 
+        PACKET_BUFFER_PLACE(buffer, 3, unsigned int, offset, htonl);
         /*Return the total length of the packet ready for net*/
         offset += 1;
         return offset;

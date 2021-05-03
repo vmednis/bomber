@@ -10,70 +10,105 @@
 #include <string.h>
 #include <sys/wait.h>
 #include "../shared/packet.h"
-#include "bombserv.h"
 
 #define HOST "127.0.0.1"
-#define PORT 3004
+#define PORT 3001
 unsigned char buffer[PACKET_MAX_BUFFER];
+int clientCount = 0;
 
 static void CallbackClientId(void* packet, void* data) {
         struct PacketClientId* pcid = packet;
-        printf("protocol version = %u, player name = %s, player color = %c", pcid->protoVersion, pcid->playerName, pcid->playerColor);
+        printf("protocol version = %u, player name = %s, player color = %c\n", pcid->protoVersion, pcid->playerName, pcid->playerColor);
         fflush(NULL);
-
 }
 
-int client_count = 0;
+static void CallbackClientInput(void* packet, void* data) {
+        struct PacketClientInput* pcin = packet;
+        printf("movementX = %u, movementY = %u, action = %u\n", pcin->movementX, pcin->movementY, pcin->action);
+        fflush(NULL);
+}
 
-int process_client(int id, int socket)
+static void CallbackClientMessage(void* packet, void* data) {
+        struct PacketClientMessage* pcmsg = packet;
+        pcmsg = pcmsg;
+        data = data;
+}
+
+int processClient(int id, int socket)
 {
         struct PacketCallbacks pccbks;
-        int len, err;
+        int len, type, err;
 
         pccbks.callback[PACKET_TYPE_CLIENT_IDENTIFY] = &CallbackClientId;
+        pccbks.callback[PACKET_TYPE_CLIENT_INPUT] = &CallbackClientInput;
+        pccbks.callback[PACKET_TYPE_CLIENT_MESSAGE] = &CallbackClientMessage;
 
         printf("Processing client id=%d, socket=%d.\n", id, socket);
-        printf("CLIENT count %d\n", client_count);
-        int i = 0;
-        while (1)
+        printf("CLIENT count %d\n", clientCount);
+        /* while (1)
         {
-                if (i == 0) {
-                        i += 1;
+                while (i < 2)
+                {
+                        printf("i1 = %d\n", i);
+                        fflush(NULL);
                         len = recv(socket, buffer, sizeof(buffer), MSG_DONTWAIT);
                         if (len < 0) {
                                 printf("ERROR Can't receive data.");
                                 err = errno;
                                 printf("ERROR = %d.\n", err);
-                                return -1;
+                                printf("i2 = %d\n", i);
+                                fflush(NULL);
                         }
-                        printf("Length = %d.\n", len);
+                        printf("Length = %d. Type = %u\n", len, buffer[2]);
                         fflush(NULL);
                         PacketDecode(buffer, len, &pccbks, NULL);
+                        printf("i3 = %d\n", i);
+                        fflush(NULL);
+                        if (len != -1) {
+                                i++;
+                        }
                 }
+        } */
+
+        while (1) {
+                read(socket, &buffer[0], 1);
+                if (buffer[0] == 0xff) {
+                        read(socket, &buffer[1], 1);
+                        if (buffer[1] == 0x00) {
+                                read(socket, &buffer[2], 1); /* Type */
+                                type = buffer[2];
+                                read(socket, &buffer[3], 1); /* Length */
+                                len = buffer[2];
+                                read(socket, &buffer[4], (len - 4)); /* Data */
+                                read(socket, &buffer[4 + len], buffer[2]); /* Ckecksum */
+                        }
+                }
+                printf("%u", buffer[2]);
+                PacketDecode(buffer, len, &pccbks, NULL);
         }
         return 0;
 }
 
-int start()
+int startNetwork()
 {
-        int main_socket;
-        int client_socket;
-        struct sockaddr_in server_address;
-        struct sockaddr_in client_address;
-        socklen_t client_address_size = sizeof(client_address);
+        int mainSocket;
+        int clientSocket;
+        struct sockaddr_in serverAddress;
+        struct sockaddr_in clientAddress;
+        socklen_t clientAddressSize = sizeof(clientAddress);
 
-        if ((main_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+        if ((mainSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0)
         {
                 printf("ERROR opening main server socket\n");
                 exit(1);
         };
         printf("Main socket created!\n");
 
-        server_address.sin_family = AF_INET;
-        server_address.sin_addr.s_addr = INADDR_ANY;
-        server_address.sin_port = htons(PORT);
+        serverAddress.sin_family = AF_INET;
+        serverAddress.sin_addr.s_addr = INADDR_ANY;
+        serverAddress.sin_port = htons(PORT);
 
-        if (bind(main_socket, (struct sockaddr*)&server_address, sizeof(server_address)) < 0)
+        if (bind(mainSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0)
         {
                 printf("ERROR binding the main server socket!\n");
                 printf("ERROR %d\n", errno);
@@ -81,7 +116,7 @@ int start()
         }
         printf("Main socket binded!\n");
 
-        if (listen(main_socket, MAX_CLIENTS) < 0)
+        if (listen(mainSocket, MAX_CLIENTS) < 0)
         {
                 printf("ERROR listening to socket!\n");
                 exit(1);
@@ -90,37 +125,37 @@ int start()
 
         while (1)
         {
-                int new_client_id = 0, cpid = 0;
+                int newClientID = 0, cpid = 0;
 
-                client_socket = accept(main_socket, (struct sockaddr*)&client_address, &client_address_size);
-                if (client_socket < 0)
+                clientSocket = accept(mainSocket, (struct sockaddr*)&clientAddress, &clientAddressSize);
+                if (clientSocket < 0)
                 {
                         printf("ERROR accepting client connection! ERRNO=%d\n", errno);
                         continue;
                 }
-                new_client_id = client_count;
-                client_count += 1;
+                newClientID = clientCount;
+                clientCount += 1;
                 cpid = fork();
 
                 if (cpid == 0) /* Child process */
                 {
-                        close(main_socket);
+                        close(mainSocket);
                         cpid = fork();
                         if (cpid == 0) /* Grandchild process*/
                         {
-                                process_client(new_client_id, client_socket);
+                                processClient(newClientID, clientSocket);
                                 exit(0);
                         }
                         else
                         {
                                 wait(NULL);
-                                printf("Successfully orphaned client %d\n", new_client_id);
+                                printf("Successfully orphaned client %d\n", newClientID);
                                 exit(0);
                         }
                 }
                 else /* Parent process */
                 {
-                        close(client_socket);
+                        close(clientSocket);
                 }
         }
         return 0;
@@ -128,6 +163,6 @@ int start()
 
 int main()
 {
-        start();
+        startNetwork();
         return 0;
 }

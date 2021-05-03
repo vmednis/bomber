@@ -12,7 +12,7 @@
 #include "../client/tests.h"
 
 #define HOST "127.0.0.1"
-#define PORT 3004
+#define PORT 3001
 
 int main()
 {
@@ -23,6 +23,8 @@ int main()
         remote_address.sin_port = htons(PORT);
         unsigned char buffer[PACKET_MAX_BUFFER];
         struct PacketClientId pcid;
+        struct PacketClientInput pci;
+        /* struct PacketClientMessage pcm; */
         unsigned int len;
 
         pcid.protoVersion = 0x00;
@@ -48,13 +50,27 @@ int main()
         {
                 while (1)
                 {
+                        /* Client ID */
                         if (i == 1) {
                                 if (send(my_socket, buffer, len, 0) < 0) {
                                         printf("error sending message");
                                         return -1;
                                 }
-                                i += 1;
+                                pci.movementX = 7;
+                                pci.movementY = 4;
+                                pci.action = 1;
+                                len = PacketEncode(buffer, PACKET_TYPE_CLIENT_INPUT, &pci);
                         }
+                        /* Client input */
+                        else if (i == 2) {
+                                if (send(my_socket, buffer, len, 0) < 0) {
+                                        printf("error sending message");
+                                        return -1;
+                                }
+                        }
+                        i += 1;
+                        printf("%d\n", i);
+                        fflush(NULL);
                 }
         }
         return 0;

@@ -12,7 +12,7 @@
 #include "../client/tests.h"
 
 #define HOST "127.0.0.1"
-#define PORT 3001
+#define PORT 3000
 
 int main()
 {
@@ -30,7 +30,10 @@ int main()
         pcid.protoVersion = 0x00;
         strcpy(pcid.playerName, "Valters");
         pcid.playerColor = 'x';
-        len = PacketEncode(buffer, PACKET_TYPE_CLIENT_IDENTIFY, &pcid);
+
+        pci.movementX = 7;
+        pci.movementY = 4;
+        pci.action = 1;
 
         inet_pton(AF_INET, HOST, &remote_address.sin_addr);
 
@@ -52,25 +55,21 @@ int main()
                 {
                         /* Client ID */
                         if (i == 1) {
+                                len = PacketEncode(buffer, PACKET_TYPE_CLIENT_IDENTIFY, &pcid);
                                 if (send(my_socket, buffer, len, 0) < 0) {
                                         printf("error sending message");
                                         return -1;
                                 }
-                                pci.movementX = 7;
-                                pci.movementY = 4;
-                                pci.action = 1;
-                                len = PacketEncode(buffer, PACKET_TYPE_CLIENT_INPUT, &pci);
                         }
                         /* Client input */
                         else if (i == 2) {
+                                len = PacketEncode(buffer, PACKET_TYPE_CLIENT_INPUT, &pci);
                                 if (send(my_socket, buffer, len, 0) < 0) {
                                         printf("error sending message");
                                         return -1;
                                 }
                         }
-                        i += 1;
-                        printf("%d\n", i);
-                        fflush(NULL);
+                        i++;
                 }
         }
         return 0;

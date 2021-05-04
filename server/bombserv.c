@@ -12,9 +12,14 @@
 #include "../shared/packet.h"
 
 #define HOST "127.0.0.1"
-#define PORT 3001
+#define PORT 3000
 unsigned char buffer[PACKET_MAX_BUFFER];
 int clientCount = 0;
+
+/* tmp */
+#define PACKET_BUFFER_PICK(buffer, offset, type, value, converter) do { \
+        value = converter(*(type *)((void *) (buffer + offset))); \
+} while(0);
 
 static void CallbackClientId(void* packet, void* data) {
         struct PacketClientId* pcid = packet;
@@ -37,7 +42,8 @@ static void CallbackClientMessage(void* packet, void* data) {
 int processClient(int id, int socket)
 {
         struct PacketCallbacks pccbks;
-        int len, type, err;
+        unsigned int len;
+        int type, err, i;
 
         pccbks.callback[PACKET_TYPE_CLIENT_IDENTIFY] = &CallbackClientId;
         pccbks.callback[PACKET_TYPE_CLIENT_INPUT] = &CallbackClientInput;
@@ -71,20 +77,29 @@ int processClient(int id, int socket)
         } */
 
         while (1) {
-                read(socket, &buffer[0], 1);
-                if (buffer[0] == 0xff) {
-                        read(socket, &buffer[1], 1);
-                        if (buffer[1] == 0x00) {
-                                read(socket, &buffer[2], 1); /* Type */
-                                type = buffer[2];
-                                read(socket, &buffer[3], 1); /* Length */
-                                len = buffer[2];
-                                read(socket, &buffer[4], (len - 4)); /* Data */
-                                read(socket, &buffer[4 + len], buffer[2]); /* Ckecksum */
+                while (i < 2) {
+
+                        read(socket, &buffer[0], 1);
+                        if (buffer[0] == 0xff) {
+                                read(socket, &buffer[1], 1);
+                                if (buffer[1] == 0x00) {
+                                        read(socket, &buffer[2], 1); /* Type */
+                                        type = buffer[2];
+                                        printf("%u\n", type);
+                                        fflush(NULL);
+                                        read(socket, &buffer[3], 4); /* Length */
+                                        PACKET_BUFFER_PICK(buffer, 3, unsigned int, len, ntohl);
+                                        printf("%d\n", len);
+                                        fflush(NULL);
+                                        read(socket, &buffer[7], (len - 7)); /* Data */
+                                        read(socket, &buffer[len], 1); /* Ckecksum */
+                                }
                         }
+                        printf("%d\n", len);
+                        fflush(NULL);
+                        PacketDecode(buffer, len, &pccbks, NULL);
+                        i++;
                 }
-                printf("%u", buffer[2]);
-                PacketDecode(buffer, len, &pccbks, NULL);
         }
         return 0;
 }

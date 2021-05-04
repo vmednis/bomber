@@ -99,6 +99,7 @@ int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
         }
         offset += ptr;
 
+        PACKET_BUFFER_PLACE(buffer, 3, unsigned int, offset, htonl);
         /*Checksum*/
         ptr = 0;
         while (ptr < offset) {
@@ -107,7 +108,6 @@ int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
         }
         buffer[offset] = check;
 
-        PACKET_BUFFER_PLACE(buffer, 3, unsigned int, offset, htonl);
         /*Return the total length of the packet ready for net*/
         offset += 1;
         return offset;
@@ -126,7 +126,7 @@ int PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbac
         }
 
         /*Check if packet is of minimum length*/
-        if (len < 4) {
+        if (len < 8) {
                 return PACKET_ERR_DECODE_OTHER;
         }
 

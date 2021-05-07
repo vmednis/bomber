@@ -16,7 +16,6 @@
 
 int main()
 {
-        int i = 1;
         int my_socket = 0;
         struct sockaddr_in remote_address;
         remote_address.sin_family = AF_INET;
@@ -51,25 +50,21 @@ int main()
         }
         else
         {
-                while (1)
-                {
-                        /* Client ID */
-                        if (i == 1) {
-                                len = PacketEncode(buffer, PACKET_TYPE_CLIENT_IDENTIFY, &pcid);
-                                if (send(my_socket, buffer, len, 0) < 0) {
-                                        printf("error sending message");
-                                        return -1;
-                                }
-                        }
-                        /* Client input */
-                        else if (i == 2) {
-                                len = PacketEncode(buffer, PACKET_TYPE_CLIENT_INPUT, &pci);
-                                if (send(my_socket, buffer, len, 0) < 0) {
-                                        printf("error sending message");
-                                        return -1;
-                                }
-                        }
-                        i++;
+                /* Client ID */
+                len = PacketEncode(buffer, PACKET_TYPE_CLIENT_IDENTIFY, &pcid);
+                printf("%u", buffer[len - 1]);
+                fflush(NULL);
+                if (send(my_socket, buffer, len, 0) < 0) {
+                        printf("error sending message");
+                        return -1;
+                }
+                /* Client input */
+                len = PacketEncode(buffer, PACKET_TYPE_CLIENT_INPUT, &pci);
+                printf("%u", buffer[len - 1]);
+                fflush(NULL);
+                if (send(my_socket, buffer, len, 0) < 0) {
+                        printf("error sending message");
+                        return -1;
                 }
         }
         return 0;

@@ -42,63 +42,76 @@ static void CallbackClientMessage(void* packet, void* data) {
 int processClient(int id, int socket)
 {
         struct PacketCallbacks pccbks;
-        unsigned int len;
-        int type, err, i;
+        unsigned int packetLength, packetType, i = 0;
 
         pccbks.callback[PACKET_TYPE_CLIENT_IDENTIFY] = &CallbackClientId;
         pccbks.callback[PACKET_TYPE_CLIENT_INPUT] = &CallbackClientInput;
         pccbks.callback[PACKET_TYPE_CLIENT_MESSAGE] = &CallbackClientMessage;
 
-        printf("Processing client id=%d, socket=%d.\n", id, socket);
-        printf("CLIENT count %d\n", clientCount);
-        /* while (1)
-        {
-                while (i < 2)
-                {
-                        printf("i1 = %d\n", i);
-                        fflush(NULL);
-                        len = recv(socket, buffer, sizeof(buffer), MSG_DONTWAIT);
-                        if (len < 0) {
-                                printf("ERROR Can't receive data.");
-                                err = errno;
-                                printf("ERROR = %d.\n", err);
-                                printf("i2 = %d\n", i);
-                                fflush(NULL);
-                        }
-                        printf("Length = %d. Type = %u\n", len, buffer[2]);
-                        fflush(NULL);
-                        PacketDecode(buffer, len, &pccbks, NULL);
-                        printf("i3 = %d\n", i);
-                        fflush(NULL);
-                        if (len != -1) {
-                                i++;
-                        }
-                }
-        } */
+        printf("Processing client id = %d, socket = %d.\n", id, socket);
+        printf("CLIENT count = %d.\n", clientCount);
 
         while (1) {
-                while (i < 2) {
-
-                        read(socket, &buffer[0], 1);
-                        if (buffer[0] == 0xff) {
-                                read(socket, &buffer[1], 1);
-                                if (buffer[1] == 0x00) {
-                                        read(socket, &buffer[2], 1); /* Type */
-                                        type = buffer[2];
-                                        printf("%u\n", type);
-                                        fflush(NULL);
-                                        read(socket, &buffer[3], 4); /* Length */
-                                        PACKET_BUFFER_PICK(buffer, 3, unsigned int, len, ntohl);
-                                        printf("%d\n", len);
-                                        fflush(NULL);
-                                        read(socket, &buffer[7], (len - 7)); /* Data */
-                                        read(socket, &buffer[len], 1); /* Ckecksum */
-                                }
-                        }
-                        printf("%d\n", len);
+                if (read(socket, &buffer[0], 1) < 0) {
+                        printf("No packet in buffer!\n");
                         fflush(NULL);
-                        PacketDecode(buffer, len, &pccbks, NULL);
-                        i++;
+                }
+                else if (buffer[0] == 0xff) {
+                        if (read(socket, &buffer[1], 1) < 0) {
+                                printf("Couldn't read packet!\n");
+                                fflush(NULL);
+                        }
+                        if (buffer[1] == 0x00) {
+                                /* Type */
+                                if (read(socket, &buffer[2], 1) < 0) {
+                                        printf("Couldn't read packet type!\n");
+                                        fflush(NULL);
+                                }
+                                packetType = buffer[2];
+
+                                /* Length */
+                                if (read(socket, &buffer[3], 4) < 0) {
+                                        printf("Couldn't read packet length!\n");
+                                        fflush(NULL);
+                                }
+
+                                PACKET_BUFFER_PICK(buffer, 3, unsigned int, packetLength, ntohl);
+
+                                /* Data */
+                                if (read(socket, &buffer[7], (packetLength - 7)) < 0) {
+                                        printf("Couldn't read packet data!\n");
+                                        fflush(NULL);
+                                }
+                                /* Ckecksum */
+                                if (read(socket, &buffer[packetLength], 1) < 0) {
+                                        printf("Couldn't read packet checksum!\n");
+                                        fflush(NULL);
+                                }
+
+                                packetLength++;
+
+                                /* New client */
+                                if (packetType == 0) {
+
+                                }
+
+                                printf("Packet length = %d.\n", packetLength);
+                                fflush(NULL);
+                                if (buffer[0] == 0xff) {
+                                        PacketDecode(buffer, packetLength, &pccbks, NULL);
+                                }
+
+                                i = 0;
+                                while (i < packetLength) {
+                                        buffer[i] = 0x00;
+                                        printf("%u", buffer[i]);
+                                        fflush(NULL);
+                                        i++;
+
+                                }
+                                printf("\n");
+                                fflush(NULL);
+                        }
                 }
         }
         return 0;

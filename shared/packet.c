@@ -67,6 +67,9 @@ int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
         case PACKET_TYPE_CLIENT_MESSAGE:
                 len = PackPacketClientMessage(tmpBuffer, packet);
                 break;
+        case PACKET_TYPE_CLIENT_PING_ANSWER:
+                len = 0;
+                break;
         case PACKET_TYPE_SERVER_IDENTIFY:
                 len = PackPacketServerIdentify(tmpBuffer, packet);
                 break;
@@ -82,18 +85,21 @@ int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
         case PACKET_TYPE_SERVER_PLAYER_INFO:
                 len = PackPacketServerPlayerInfo(tmpBuffer, packet);
                 break;
+        case PACKET_TYPE_SERVER_PING:
+                len = 0;
+                break;
         default:
                 printf("Warning! Tried to encode unimplemented package %i", type);
                 return PACKET_ERR_ENCODE_UNIMPLEMENTED;
         }
         len = BufferEscape(tmpBuffer, len);
-        PACKET_BUFFER_PLACE(buffer, 3, unsigned int, len, htonl);
         while (ptr < len) {
                 buffer[offset + ptr] = tmpBuffer[ptr];
                 ptr++;
         }
         offset += ptr;
 
+        PACKET_BUFFER_PLACE(buffer, 3, unsigned int, offset, htonl);
         /*Checksum*/
         ptr = 0;
         while (ptr < offset) {
@@ -120,7 +126,7 @@ int PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbac
         }
 
         /*Check if packet is of minimum length*/
-        if (len < 4) {
+        if (len < 8) {
                 return PACKET_ERR_DECODE_OTHER;
         }
 

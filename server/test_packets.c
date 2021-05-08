@@ -55,8 +55,8 @@ static void TestPackets() {
         pccbks.callback[PACKET_TYPE_SERVER_MESSAGE] = &CallbackServerMessage;
         pccbks.callback[PACKET_TYPE_SERVER_PLAYER_INFO] = &CallbackServerPlayers;
 
-        psid.protoVersion = 0x80;
-        psid.clientAccepted = 3;
+        psid.protoVersion = 0x00;
+        psid.clientAccepted = 0;
         len = PacketEncode(buffer, PACKET_TYPE_SERVER_IDENTIFY, &psid);
         PacketDecode(buffer, len, &pccbks, NULL);
 
@@ -119,4 +119,6 @@ static void TestPackets() {
         memcpy(psp.players, players, sizeof(players));
         len = PacketEncode(buffer, PACKET_TYPE_SERVER_PLAYER_INFO, &psp);
         PacketDecode(buffer, len, &pccbks, NULL);
+
+        len = PacketEncode(buffer, PACKET_TYPE_SERVER_PING, NULL);
 }

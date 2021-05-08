@@ -3,6 +3,7 @@
 #include <raylib.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include "../shared/packet.h"
 #include "../client/tests.h"
@@ -15,10 +16,16 @@
 #define SCREEN_HEIGHT 540
 
 void LoadTextures(Texture2D* atlas);
+void SetupCallbacks();
 void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, float delta);
 void SetupNetwork(struct NetworkState* netState);
 void ProcessNetwork(struct GameState* gameState, struct NetworkState* netState);
 void ProcessInput(struct GameState* gameState, struct NetworkState* netState);
+
+void CallbackServerId(void * packet, void * passthrough);
+void CallbackGameArea(void * packet, void * passthrough);
+
+static struct PacketCallbacks packetCallbacks = {0};
 
 int main() {
         float delta;
@@ -30,9 +37,10 @@ int main() {
 
         InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Bomber Client");
         LoadTextures(textureAtlas);
+        SetupCallbacks();
 
         strcpy(netState.ip, "127.0.0.1");
-        netState.port = 1337;
+        netState.port = 13337;
         SetupNetwork(&netState);
 
         while(!WindowShouldClose()) {
@@ -56,18 +64,23 @@ void LoadTextures(Texture2D* atlas) {
         atlas[TEXTURE_WALL_BREAKABLE] = LoadTexture("assets/wall_breakable.png");
 }
 
+void SetupCallbacks() {
+        packetCallbacks.callback[PACKET_TYPE_SERVER_IDENTIFY] = &CallbackServerId;
+        packetCallbacks.callback[PACKET_TYPE_SERVER_GAME_AREA] = &CallbackGameArea;
+}
+
 void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, UNUSED float delta) {
-        int i, j;
+        int x, y;
         unsigned char tile;
 
         ClearBackground(RAYWHITE);
 
         /* Draw world */
-        for(i = 0; i < gameState->worldY; i++) {
-                for(j = 0; j < gameState->worldX; j++) {
-                        tile = gameState->world[i][j];
+        for(y = 0; y < gameState->worldY; y++) {
+                for(x = 0; x < gameState->worldX; x++) {
+                        tile = gameState->world[y * gameState->worldX + x];
                         if(tile != 0) {
-                                DrawTexture(textureAtlas[tile], j * 64, i * 64, WHITE);
+                                DrawTexture(textureAtlas[tile], x * 64, y * 64, WHITE);
                         }
                 }
         }
@@ -77,23 +90,55 @@ void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, UNUSED floa
 
 void SetupNetwork(struct NetworkState* netState) {
         struct sockaddr_in addr;
+        char yes = 1;
 
         addr.sin_family = AF_INET;
         addr.sin_port = htons(netState->port);
         inet_pton(AF_INET, netState->ip, &addr.sin_addr);
 
         netState->fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+        setsockopt(netState->fd, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes));
         connect(netState->fd, (struct sockaddr *) &addr, sizeof(addr));
 }
 
-void ProcessNetwork(struct GameState* gameState, struct NetworkState* netState) {
-        struct PacketCallbacks pckcbks = {0};
-        unsigned char buffer[PACKET_MAX_BUFFER];
-        int len = 0;
+void ConsumePacket(unsigned char *buffer, unsigned int len, void *data) {
+        unsigned int error = 0;
 
-        len = read(netState->fd, buffer, PACKET_MAX_BUFFER);
-        if(len > 0) {
-                PacketDecode(buffer, len, &pckcbks, gameState);
+        if(len <= 0) return;
+        if((error = PacketDecode(buffer, len, &packetCallbacks, data))) {
+                printf("Error occured decoding packet %i", error);
+        }
+}
+
+void ProcessNetwork(struct GameState* gameState, struct NetworkState* netState) {
+        static unsigned char buffer[PACKET_MAX_BUFFER];
+        static unsigned char curchar = 0;
+        static unsigned char lastchar = 0;
+        static unsigned int ptr = 0;
+        static unsigned int targetptr = 0;
+        static int len = 0;
+
+        while((len = read(netState->fd, &curchar, 1)) > 0) {
+                if (targetptr > 0 && ptr == targetptr) {
+                        /*Ideal case we're good to read*/
+                        ConsumePacket(buffer, ptr, gameState);
+                        targetptr = 0;
+                        ptr = 0;
+                } else if (lastchar == 0xff && curchar == 0x00) {
+                        /*Probably going to be malformed anyways, but worth a shot*/
+                        ConsumePacket(buffer, ptr, gameState);
+                        buffer[0] = lastchar;
+                        targetptr = 0;
+                        ptr = 1;
+                }
+
+                if (ptr == 7) {
+                        targetptr = ntohl(*((int *)(&buffer[ptr - 4])));
+                }
+
+                buffer[ptr] = curchar;
+                lastchar = curchar;
+                ptr++;
         }
 }
 
@@ -102,7 +147,9 @@ void ProcessInput(struct GameState* gameState, struct NetworkState* netState) {
         unsigned char buffer[PACKET_MAX_BUFFER];
         int len = 0;
 
-        if(gameState->timer > 1) {
+        struct PacketGameAreaInfo pgai = (struct PacketGameAreaInfo)pgai;
+
+        if(gameState->timer > (1.0 / 5)) {
                 if(IsKeyDown(KEY_RIGHT)) input.movementX += 127;
                 if(IsKeyDown(KEY_LEFT))  input.movementX -= 127;
                 if(IsKeyDown(KEY_UP))    input.movementY -= 127;
@@ -110,8 +157,27 @@ void ProcessInput(struct GameState* gameState, struct NetworkState* netState) {
                 if(IsKeyDown(KEY_Z))     input.action = 1;
 
                 len = PacketEncode(buffer, PACKET_TYPE_CLIENT_INPUT, &input);
-                write(netState->fd, buffer, len);
+                send(netState->fd, buffer, len, 0);
 
                 gameState->timer = 0;
         }
+}
+
+void CallbackServerId(void * packet, void * passthrough) {
+        struct PacketServerId* serverId = packet;
+        struct GameState* gameState = passthrough;
+
+        if (serverId->protoVersion == 0x0 && serverId->clientAccepted) {
+                /* TODO: Switch some internal states or something*/
+                gameState = gameState;
+        }
+}
+
+void CallbackGameArea(void * packet, void * passthrough) {
+        struct PacketGameAreaInfo* gameArea = packet;
+        struct GameState* gameState = passthrough;
+
+        gameState->worldX = gameArea->sizeX;
+        gameState->worldY = gameArea->sizeY;
+        memcpy(gameState->world, gameArea->blockIDs, gameArea->sizeY * gameArea->sizeX);
 }

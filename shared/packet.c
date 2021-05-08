@@ -128,6 +128,7 @@ int PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbac
         }
 
         /* Check the checksum */
+        #ifndef PACKET_IGNORE_CHCKSUM
         while (ptr < len - 1) {
                 check ^= buffer[ptr];
                 ptr++;
@@ -135,6 +136,7 @@ int PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbac
         if (buffer[len - 1] != check) {
                 return PACKET_ERR_DECODE_CHECKSUM;
         }
+        #endif
 
         /* Get the type */
         type = buffer[2];

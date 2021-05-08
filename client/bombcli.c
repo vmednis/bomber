@@ -102,11 +102,21 @@ void SetupNetwork(struct NetworkState* netState) {
 }
 
 void ConsumePacket(unsigned char *buffer, unsigned int len, void *data) {
-        unsigned int error = 0;
-
         if(len <= 0) return;
-        if((error = PacketDecode(buffer, len, &packetCallbacks, data))) {
-                printf("Error occured decoding packet %i", error);
+        switch (PacketDecode(buffer, len, &packetCallbacks, data))
+        {
+        case PACKET_ERR_DECODE_START:
+                puts("Packet decode error: Malformed start");
+                break;
+        case PACKET_ERR_DECODE_UNIMPLEMENTED:
+                puts("Packet decode error: Unimplemented packet type");
+                break;
+        case PACKET_ERR_DECODE_CHECKSUM:
+                puts("Packet decode error: Checksum incorrect");
+                break;
+        case PACKET_ERR_DECODE_OTHER:
+                puts("Packet decode error: Unknown Error");
+                break;
         }
 }
 
@@ -119,14 +129,9 @@ void ProcessNetwork(struct GameState* gameState, struct NetworkState* netState) 
         static int len = 0;
 
         while((len = read(netState->fd, &curchar, 1)) > 0) {
-                if (targetptr > 0 && ptr == targetptr) {
-                        /*Ideal case we're good to read*/
-                        ConsumePacket(buffer, ptr, gameState);
-                        targetptr = 0;
-                        ptr = 0;
-                } else if (lastchar == 0xff && curchar == 0x00) {
+                if (ptr != 0 && lastchar == 0xff && curchar == 0x00) {
                         /*Probably going to be malformed anyways, but worth a shot*/
-                        ConsumePacket(buffer, ptr, gameState);
+                        ConsumePacket(buffer, ptr - 1, gameState);
                         buffer[0] = lastchar;
                         targetptr = 0;
                         ptr = 1;
@@ -135,10 +140,16 @@ void ProcessNetwork(struct GameState* gameState, struct NetworkState* netState) 
                 if (ptr == 7) {
                         targetptr = ntohl(*((int *)(&buffer[ptr - 4])));
                 }
-
                 buffer[ptr] = curchar;
                 lastchar = curchar;
                 ptr++;
+
+                if (targetptr > 0 && ptr == (targetptr + 1)) {
+                        /*Ideal case we're good to read*/
+                        ConsumePacket(buffer, ptr, gameState);
+                        targetptr = 0;
+                        ptr = 0;
+                }
         }
 }
 

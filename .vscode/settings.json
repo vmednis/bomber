@@ -1,7 +1,11 @@
 {
   "editor.rulers": [80, 100],
   "editor.tabSize": 8,
-  "files.associations": {
-    "packet.h": "c"
-  }
+  "makefile.launchConfigurations": [
+    {
+      "cwd": "/home/vmednis/Code/bomber",
+      "binaryPath": "/home/vmednis/Code/bomber/bombcli",
+      "binaryArgs": []
+    }
+  ]
 }

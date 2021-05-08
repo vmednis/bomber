@@ -38,8 +38,8 @@ static void UnpackPacketServerPlayerInfo(unsigned char* buffer, void* packet);
 
 int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
         unsigned char tmpBuffer[PACKET_MAX_BUFFER];
-        int offset = 0;
-        int ptr = 0;
+        unsigned int offset = 0;
+        unsigned int ptr = 0;
         unsigned int len = 0;
         unsigned char check = 0;
 

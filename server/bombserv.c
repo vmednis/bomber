@@ -17,7 +17,6 @@
 
 #define HOST "127.0.0.1"
 #define PORT 3001
-unsigned char buffer[PACKET_MAX_BUFFER];
 int clientFDs[MAX_CLIENTS];
 int clientCount = 0;
 int movableObjectCont = 0;
@@ -37,7 +36,7 @@ static void CallbackClientId(void* packet, void* data) {
 
 static void CallbackClientInput(void* packet, void* data) {
         struct PacketClientInput* pcin = packet;
-        printf("movementX = %u, movementY = %u, action = %u\n", pcin->movementX, pcin->movementY, pcin->action);
+        printf("movementX = %i, movementY = %i, action = %i\n", pcin->movementX, pcin->movementY, pcin->action);
 }
 
 static void CallbackClientMessage(void* packet, void* data) {
@@ -46,7 +45,7 @@ static void CallbackClientMessage(void* packet, void* data) {
         data = data;
 }
 
-int startServer() {
+int StartServer() {
         struct sockaddr_in serverAddress;
 
         if ((mainSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0)
@@ -80,7 +79,8 @@ int startServer() {
         return 0;
 }
 
-int acceptClients() {
+int AcceptClients() {
+        unsigned char buffer[PACKET_MAX_BUFFER];
         int newClients = 1, clientSocket, len;
         struct sockaddr_in clientAddress;
         socklen_t clientAddressSize = sizeof(clientAddress);
@@ -151,7 +151,82 @@ int acceptClients() {
         return 1;
 }
 
-int handleIncomingPackets() {
+/* Handles Client Packets, returns 1 if it read any packet, 0 if there currently are no more packets. */
+int HandleClientPackets(int clientId, struct PacketCallbacks *pckcbks) {
+        unsigned char buffer[PACKET_MAX_BUFFER];
+        unsigned int fd = clientFDs[clientId];
+        unsigned int len;
+
+        if (read(fd, &buffer[0], 1) < 0) {
+                return 0;
+        }
+
+        if (buffer[0] == 0xff) {
+                if (read(fd, &buffer[1], 1) == -1) {
+                        printf("Couldn't read packet!\n");
+                        fflush(NULL);
+                }
+
+                if (buffer[1] == 0x00) {
+                        /* Type */
+                        if (read(fd, &buffer[2], 1) < 0) {
+                                printf("Couldn't read packet type!\n");
+                                fflush(NULL);
+                        }
+
+                        /* Length */
+                        if (read(fd, &buffer[3], 4) < 0) {
+                                printf("Couldn't read packet length!\n");
+                                fflush(NULL);
+                        }
+
+                        PACKET_BUFFER_PICK(buffer, 3, unsigned int, len, ntohl);
+
+                        /* Data */
+                        if (read(fd, &buffer[7], (len - 7)) < 0) {
+                                printf("Couldn't read packet data!\n");
+                                fflush(NULL);
+                        }
+                        /* Ckecksum */
+                        if (read(fd, &buffer[len], 1) < 0) {
+                                printf("Couldn't read packet checksum!\n");
+                                fflush(NULL);
+                        }
+
+                        len++;
+
+                        printf("Packet length = %d.\n", len);
+                        if (buffer[0] == 0xff) {
+                                PacketDecode(buffer, len, pckcbks, NULL);
+                        }
+                }
+        }
+
+        return 1;
+
+        /* Do something depending on the received packet type */
+        /*
+        if (packetType == 0) {
+                while (current->next != NULL)
+                {
+                        if (current->client->clientID == i) {
+                                strcpy(current->client->name, newClientName);
+                                current->client->color = newClienColor;
+                        }
+                        current = current->next;
+                }
+                if (current->client->clientID == i) {
+                        strcpy(current->client->name, newClientName);
+                        current->client->color = newClienColor;
+                }
+        }
+        else if (packetType == 1) {
+
+        }
+        */
+}
+
+int HandleIncomingPackets() {
         struct PacketCallbacks pccbks;
         unsigned int len, i;
         unsigned char packetType;
@@ -162,78 +237,14 @@ int handleIncomingPackets() {
         pccbks.callback[PACKET_TYPE_CLIENT_MESSAGE] = &CallbackClientMessage;
 
         for (i = 0; i < clientCount; i++) {
-                if (read(clientFDs[i], &buffer[0], 1) < 0) {
-                        /* No data in client buffer */
-                        continue;
-                }
-                else {
-                        if (buffer[0] == 0xff) {
-                                if (read(clientFDs[i], &buffer[1], 1) == -1) {
-                                        printf("Couldn't read packet!\n");
-                                        fflush(NULL);
-                                }
-                                if (buffer[1] == 0x00) {
-                                        /* Type */
-                                        if (read(clientFDs[i], &buffer[2], 1) < 0) {
-                                                printf("Couldn't read packet type!\n");
-                                                fflush(NULL);
-                                        }
-                                        packetType = buffer[2];
-
-                                        /* Length */
-                                        if (read(clientFDs[i], &buffer[3], 4) < 0) {
-                                                printf("Couldn't read packet length!\n");
-                                                fflush(NULL);
-                                        }
-
-                                        PACKET_BUFFER_PICK(buffer, 3, unsigned int, len, ntohl);
-
-                                        /* Data */
-                                        if (read(clientFDs[i], &buffer[7], (len - 7)) < 0) {
-                                                printf("Couldn't read packet data!\n");
-                                                fflush(NULL);
-                                        }
-                                        /* Ckecksum */
-                                        if (read(clientFDs[i], &buffer[len], 1) < 0) {
-                                                printf("Couldn't read packet checksum!\n");
-                                                fflush(NULL);
-                                        }
-
-                                        len++;
-
-                                        printf("Packet length = %d.\n", len);
-                                        if (buffer[0] == 0xff) {
-                                                PacketDecode(buffer, len, &pccbks, NULL);
-                                        }
-                                }
-                        }
-
-                }
-
-                /* Do something depending on the received packet type */
-                if (packetType == 0) {
-                        while (current->next != NULL)
-                        {
-                                if (current->client->clientID == i) {
-                                        strcpy(current->client->name, newClientName);
-                                        current->client->color = newClienColor;
-                                }
-                                current = current->next;
-                        }
-                        if (current->client->clientID == i) {
-                                strcpy(current->client->name, newClientName);
-                                current->client->color = newClienColor;
-                        }
-                }
-                else if (packetType == 1) {
-
-                }
+                /* No klienta viena update laikā var pienākt vairāki packets*/
+                while(HandleClientPackets(i, &pccbks));
         }
         return 0;
 }
 
 /* Add current clients to the game */
-int addPlayers() {
+int AddPlayers() {
         allClients* current = firstClient;
         while (current->next != NULL) {
                 current->client->inGame = 1;
@@ -250,7 +261,8 @@ int addPlayers() {
         return 1;
 }
 
-int updateClients() {
+int UpdateClients() {
+        unsigned char buffer[PACKET_MAX_BUFFER];
         int i, j, len;
         struct PacketGameAreaInfo pgai;
         struct PacketServerMessage psm;
@@ -355,20 +367,20 @@ int updateClients() {
         return 0;
 }
 
-int gameloop() {
+int GameLoop() {
         while (1)
         {
-                acceptClients();
-                handleIncomingPackets();
+                AcceptClients();
+                HandleIncomingPackets();
 
                 /* Start game */
                 if (gameRunning == 0 && clientCount >= 2) {
                         printf("Client count = %d.\n", clientCount);
-                        addPlayers();
+                        AddPlayers();
                         startGame = 1;
                         gameRunning = 1;
                         printf("Starting game!\n");
-                        updateClients();
+                        UpdateClients();
                 }
                 sleep(1);
         }
@@ -377,12 +389,12 @@ int gameloop() {
 
 int main()
 {
-        if (startServer() < 0) {
+        if (StartServer() < 0) {
                 printf("ERROR starting server!\n");
                 fflush(NULL);
         }
         else {
-                gameloop();
+                GameLoop();
         }
         return 0;
 }

@@ -15,6 +15,8 @@ typedef struct client
         char color;
         int inGame;
         int readyForGame;
+        float x;
+        float y;
 } client;
 
 typedef struct allClients

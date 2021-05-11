@@ -65,7 +65,7 @@ void HashmapRemove(struct Hashmap* hashmap, unsigned int key) {
         }
 }
 
-void* HasmapGet(struct Hashmap* hashmap, unsigned int key) {
+void* HashmapGet(struct Hashmap* hashmap, unsigned int key) {
         struct HashmapNode* node;
         unsigned int bucket;
 

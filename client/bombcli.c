@@ -38,7 +38,7 @@ int main() {
         SetupCallbacks();
 
         strcpy(netState.ip, "127.0.0.1");
-        netState.port = 3000;
+        netState.port = 3001;
         SetupNetwork(&netState);
 
         while(!WindowShouldClose()) {

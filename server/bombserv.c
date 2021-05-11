@@ -20,6 +20,7 @@
 unsigned char buffer[PACKET_MAX_BUFFER];
 int clientFDs[MAX_CLIENTS];
 int clientCount = 0;
+int movableObjectCont = 0;
 int startGame = 0;
 int gameRunning = 0;
 int mainSocket = 0;
@@ -252,9 +253,10 @@ int updateClients() {
         int i, j, len;
         struct PacketGameAreaInfo pgai;
         struct PacketServerMessage psm;
-        /* struct PacketMovableObjects pmo; */
+        struct PacketMovableObjects pmo;
         struct PacketServerPlayers psp;
         struct PacketServerPlayerInfo players[clientCount];
+        struct PacketMovableObjectInfo objects[MAX_MOVABLE_OBJECTS];
         allClients* current = firstClient;
 
         pgai.sizeX = 13;
@@ -280,9 +282,10 @@ int updateClients() {
                         }
                         printf("Sent message to client %d.\n", i);
 
-                        /* Pack all player info */
+                        /* Pack and send all player info */
                         psp.playerCount = clientCount;
                         for (j = 0; j < clientCount; j++) {
+                                printf("ID = %d\n", current->client->clientID);
                                 players[j].playerID = current->client->clientID;
                                 strcpy(players[j].playerName, current->client->name);
                                 players[j].playerColor = current->client->color;
@@ -290,6 +293,9 @@ int updateClients() {
                                 players[j].playerLives = 3;
                                 if (current->next != NULL) {
                                         current = current->next;
+                                }
+                                else {
+                                        current = firstClient;
                                 }
                         }
                         memcpy(psp.players, players, sizeof(players));
@@ -302,7 +308,15 @@ int updateClients() {
                         else {
                                 printf("Sent player info to clients!\n");
                         }
+
+                        /* Pack and send all movable object info */
+                        pmo.objectCount = clientCount;
+
+                        for (j = 0; j < clientCount; j++) {
+
+                        }
                 }
+
 
                 /* if (current->client->inGame == 1) {
 

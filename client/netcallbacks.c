@@ -1,7 +1,9 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "../client/netcallbacks.h"
 #include "../client/gamestate.h"
+#include "../client/hashmap.h"
 #include "../shared/packet.h"
 
 #define UNUSED __attribute__((unused))
@@ -26,10 +28,26 @@ void CallbackGameArea(void * packet, void * passthrough) {
 }
 
 void CallbackMovableObj(void * packet, void * passthrough) {
-        struct PacketMovableObjects* movable = packet;
         struct GameState* gameState = passthrough;
+        struct PacketMovableObjects* movable = packet;
+        struct PacketMovableObjectInfo info;
+        struct GameObject* obj;
+        unsigned int i = 0;
 
-        printf("Unhandled MovableObj: count=%i\n", movable->objectCount);
+        while (i < movable->objectCount) {
+                info = movable->movableObjects[i];
+                obj = HashmapGet(gameState->objects, info.objectID);
+                if(obj == NULL) {
+                        obj = malloc(sizeof(struct GameObject));
+                        HashmapPut(gameState->objects, info.objectID, obj);
+                }
+                obj->id = info.objectID;
+                obj->type = info.objectType;
+                obj->x = info.objectX;
+                obj->y = info.objectY;
+                obj->remove = 0;
+                i++;
+        }
 }
 
 void CallbackMessage(void * packet, void * passthrough) {
@@ -39,11 +57,11 @@ void CallbackMessage(void * packet, void * passthrough) {
         printf("Unhandled ServerMsg: type=%i, data=%s\n", msg->messageType, msg->message);
 }
 
-void CallbackPlayerInfo(void * packet, void * passthrough) {
-        struct PacketServerPlayerInfo* info = packet;
+void CallbackServerPlayers(void * packet, void * passthrough) {
+        struct PacketServerPlayers* players = packet;
         struct GameState* gameState = passthrough;
 
-        printf("Unhandled player info: id=%i, name=%s\n", info->playerID, info->playerName);
+        printf("Unhandled player info: count=%i\n", players->playerCount);
 }
 
 void CallbackPing(UNUSED void * packet, void * passthrough) {

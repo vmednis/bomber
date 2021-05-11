@@ -32,24 +32,12 @@ int main() {
         struct NetworkState netState = {0};
         struct GameState gameState = {0};
         Texture2D textureAtlas[TEXTURE_ATLAS_SIZE] = {0};
-        struct GameObject go0, go1;
 
         SelfTest();
-        gameState.objects = HashmapNew();
-        go0.x = 64;
-        go0.y = 64;
-        go0.tint = 64;
-        go0.type = Player;
-        HashmapPut(gameState.objects, 1, &go0);
-
-        go1.x = 640;
-        go1.y = 64;
-        go1.tint = 192;
-        go1.type = Player;
-        HashmapPut(gameState.objects, 99, &go1);
 
         InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Bomber Client");
         LoadTextures(textureAtlas);
+        gameState.objects = HashmapNew();
         SetupCallbacks();
 
         strcpy(netState.ip, "127.0.0.1");
@@ -86,7 +74,7 @@ void SetupCallbacks() {
         packetCallbacks.callback[PACKET_TYPE_SERVER_GAME_AREA] = &CallbackGameArea;
         packetCallbacks.callback[PACKET_TYPE_MOVABLE_OBJECTS] = &CallbackMovableObj;
         packetCallbacks.callback[PACKET_TYPE_SERVER_MESSAGE] = &CallbackMessage;
-        packetCallbacks.callback[PACKET_TYPE_SERVER_PLAYER_INFO] = &CallbackPlayerInfo;
+        packetCallbacks.callback[PACKET_TYPE_SERVER_PLAYER_INFO] = &CallbackServerPlayers;
         packetCallbacks.callback[PACKET_TYPE_SERVER_PING] = &CallbackPing;
 }
 
@@ -158,7 +146,7 @@ void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, UNUSED floa
         while((curobj = HashmapNext(iter)) != NULL) {
                 switch(curobj->type) {
                 case Player:
-                        DrawTexture(textureAtlas[TEXTURE_PLAYER_FRONT], curobj->x, curobj->y, CalculatePlayerColor(curobj->tint));
+                        DrawTexture(textureAtlas[TEXTURE_PLAYER_FRONT], curobj->x * 64.0, curobj->y * 64.0, CalculatePlayerColor(curobj->tint));
                         break;
                 case Bomb:
                         break;

@@ -10,10 +10,12 @@ enum GameObjectType {
 };
 
 struct GameObject {
+        unsigned int id;
         float x;
         float y;
         enum GameObjectType type;
         unsigned char tint;
+        int remove;
 };
 
 struct GameState {

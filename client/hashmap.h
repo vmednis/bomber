@@ -16,7 +16,7 @@ struct HashmapIterator {
 struct Hashmap* HashmapNew();
 void HashmapPut(struct Hashmap* hashmap, unsigned int key, void *value);
 void HashmapRemove(struct Hashmap* hashmap, unsigned int key);
-void* HasmapGet(struct Hashmap* hashmap, unsigned int key);
+void* HashmapGet(struct Hashmap* hashmap, unsigned int key);
 void HashmapFree(struct Hashmap* hashmap);
 struct HashmapIterator* HashmapIterator(struct Hashmap* hashmap);
 void* HashmapNext(struct HashmapIterator* iter);

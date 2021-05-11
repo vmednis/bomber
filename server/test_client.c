@@ -43,25 +43,21 @@ static void CallbackServerMessage(void* packet, void* data) {
 static void CallbackServerPlayers(void* packet, void* data) {
         int i;
         struct PacketServerPlayers* psp = packet;
-        printf("player count = %u\n", psp->playerCount);
+        printf("player count = %u\n\n", psp->playerCount);
         for (i = 0; i < psp->playerCount; i++) {
-                printf("PlayerID = %u\n", psp->players->playerID);
-                printf("Player name = %s\n", psp->players->playerName);
-                printf("Player color = %u\n", psp->players->playerColor);
-                printf("Player points = %u\n", psp->players->playerPoints);
-                printf("PlayerID = %u\n", psp->players->playerLives);
+                printf("PlayerID = %u\n", psp->players[i].playerID);
+                printf("Player name = %s\n", psp->players[i].playerName);
+                printf("Player color = %u\n", psp->players[i].playerColor);
+                printf("Player points = %u\n", psp->players[i].playerPoints);
+                printf("Player lives = %u\n", psp->players[i].playerLives);
         }
         printf("\n");
-        while (1)
-        {
-                
-        }
-        
+       
 }
 
 int main()
 {
-        int my_socket = 0;
+        int my_socket = 0;      
         struct sockaddr_in remote_address;
         remote_address.sin_family = AF_INET;
         remote_address.sin_port = htons(PORT);

@@ -223,8 +223,6 @@ void ProcessInput(struct GameState* gameState, struct NetworkState* netState) {
         unsigned char buffer[PACKET_MAX_BUFFER];
         int len = 0;
 
-        struct PacketGameAreaInfo pgai = (struct PacketGameAreaInfo)pgai;
-
         if(gameState->timer > (1.0 / 5)) {
                 if(IsKeyDown(KEY_RIGHT)) input.movementX += 127;
                 if(IsKeyDown(KEY_LEFT))  input.movementX -= 127;
@@ -236,5 +234,11 @@ void ProcessInput(struct GameState* gameState, struct NetworkState* netState) {
                 send(netState->fd, buffer, len, 0);
 
                 gameState->timer = 0;
+        }
+
+        if(gameState->pingrequested) {
+                gameState->pingrequested = 0;
+                len = PacketEncode(buffer, PACKET_TYPE_CLIENT_PING_ANSWER, NULL);
+                send(netState->fd, buffer, len, 0);
         }
 }

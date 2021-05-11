@@ -4,6 +4,8 @@
 #include "../client/gamestate.h"
 #include "../shared/packet.h"
 
+#define UNUSED __attribute__((unused))
+
 void CallbackServerId(void * packet, void * passthrough) {
         struct PacketServerId* serverId = packet;
         struct GameState* gameState = passthrough;
@@ -44,9 +46,7 @@ void CallbackPlayerInfo(void * packet, void * passthrough) {
         printf("Unhandled player info: id=%i, name=%s\n", info->playerID, info->playerName);
 }
 
-void CallbackPing(void * packet, void * passthrough) {
-        struct PacketServerPing* ping = packet;
+void CallbackPing(UNUSED void * packet, void * passthrough) {
         struct GameState* gameState = passthrough;
-
-        printf("Unhandled ping!\n");
+        gameState->pingrequested = 1;
 }

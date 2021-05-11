@@ -161,6 +161,8 @@ int PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbac
         case PACKET_TYPE_CLIENT_MESSAGE:
                 UnpackPacketClientMessage(buffer + 3 + sizeof(unsigned int), packet);
                 break;
+        case PACKET_TYPE_CLIENT_PING_ANSWER:
+                break;
         case PACKET_TYPE_SERVER_IDENTIFY:
                 UnpackPacketServerIdentify(buffer + 3 + sizeof(unsigned int), packet);
                 break;
@@ -175,6 +177,8 @@ int PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbac
                 break;
         case PACKET_TYPE_SERVER_PLAYER_INFO:
                 UnpackPacketServerPlayerInfo(buffer + 3 + sizeof(unsigned int), packet);
+                break;
+        case PACKET_TYPE_SERVER_PING:
                 break;
         default:
                 printf("Warning! Tried to decode unimplemented package %i", type);

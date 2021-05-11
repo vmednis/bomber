@@ -19,6 +19,7 @@
 #define PORT 3001
 unsigned char buffer[PACKET_MAX_BUFFER];
 int clientCount = 0;
+int startGame = 0;
 int gameRunning = 0;
 int mainSocket = 0;
 allClients* firstClient;
@@ -227,23 +228,37 @@ int addPlayers() {
 int updateClients() {
         int i, len;
         struct PacketGameAreaInfo pgai;
+        struct PacketServerMessage psm;
 
         pgai.sizeX = 13;
         pgai.sizeY = 13;
         memcpy(pgai.blockIDs, blocks, sizeof(blocks));
-        len = PacketEncode(buffer, PACKET_TYPE_SERVER_GAME_AREA, &pgai);
-        printf("Length: %d\n", len);
 
+        /* Send game arena to all players */
         for (i = 0; i < clientCount; i++) {
+                len = PacketEncode(buffer, PACKET_TYPE_SERVER_GAME_AREA, &pgai);
                 if (send(clientFDs[i], buffer, len, 0) < 0) {
-                        printf("ERROR sending message");
+                        printf("ERROR sending game arena");
                         return -1;
+                }
+                printf("Sent game arena to client %d.\n", i);
+                /* Beginning of the round */
+                if (startGame == 1) {
+                        psm.messageType = 1;
+                        strcpy(psm.message, "Game starting!");
+                        len = PacketEncode(buffer, PACKET_TYPE_SERVER_MESSAGE, &psm);
+                        if (send(clientFDs[i], buffer, len, 0) < 0) {
+                                printf("ERROR sending message");
+                                return -1;
+                        }
+                        printf("Sent message to client %d.\n", i);
                 }
 
                 /* if (current->client->inGame == 1) {
 
                 } */
         }
+        startGame = 0;
         return 0;
 }
 
@@ -255,7 +270,9 @@ int gameloop() {
 
                 /* Start game */
                 if (gameRunning == 0 && clientCount >= 2) {
+                        printf("Client count = %d.\n", clientCount);
                         addPlayers();
+                        startGame = 1;
                         gameRunning = 1;
                         printf("Starting game!\n");
                         updateClients();

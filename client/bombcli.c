@@ -19,6 +19,7 @@
 #define SCREEN_HEIGHT 540
 
 void LoadTextures(Texture2D* atlas);
+void SetupGameState(struct GameState * gameState);
 void SetupCallbacks();
 void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, float delta);
 void SetupNetwork(struct NetworkState* netState);
@@ -37,7 +38,7 @@ int main() {
 
         InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Bomber Client");
         LoadTextures(textureAtlas);
-        gameState.objects = HashmapNew();
+        SetupGameState(&gameState);
         SetupCallbacks();
 
         strcpy(netState.ip, "127.0.0.1");
@@ -67,6 +68,11 @@ void LoadTextures(Texture2D* atlas) {
         atlas[TEXTURE_PLAYER_LEFT] = LoadTexture("assets/player_left.png");
         atlas[TEXTURE_PLAYER_RIGHT] = LoadTexture("assets/player_right.png");
         atlas[TEXTURE_PLAYER_BACK] = LoadTexture("assets/player_back.png");
+}
+
+void SetupGameState(struct GameState * gameState) {
+        gameState->objects = HashmapNew();
+        gameState->players = HashmapNew();
 }
 
 void SetupCallbacks() {

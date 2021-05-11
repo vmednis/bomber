@@ -12,6 +12,7 @@ typedef struct client
         int clientID;
         int fd;
         char name[32];
+        char color;
         int inGame;
         int readyForGame;
 } client;
@@ -21,8 +22,6 @@ typedef struct allClients
         client* client;
         struct allClients* next;
 } allClients;
-
-int clientFDs[MAX_CLIENTS];
 
 /* Default game arena */
 unsigned char blocks[169] = {

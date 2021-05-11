@@ -217,26 +217,26 @@ void CallbackMovableObj(void * packet, void * passthrough) {
         struct PacketMovableObjects* movable = packet;
         struct GameState* gameState = passthrough;
 
-        printf("Unhandled MovableObj: count=%i", movable->objectCount);
+        printf("Unhandled MovableObj: count=%i\n", movable->objectCount);
 }
 
 void CallbackMessage(void * packet, void * passthrough) {
         struct PacketServerMessage* msg = packet;
         struct GameState* gameState = passthrough;
 
-        printf("Unhandled ServerMsg: type=%i, data=%s", msg->messageType, msg->message);
+        printf("Unhandled ServerMsg: type=%i, data=%s\n", msg->messageType, msg->message);
 }
 
 void CallbackPlayerInfo(void * packet, void * passthrough) {
         struct PacketServerPlayerInfo* info = packet;
         struct GameState* gameState = passthrough;
 
-        printf("Unhandled player info: id=%i, name=%s", info->playerID, info->playerName);
+        printf("Unhandled player info: id=%i, name=%s\n", info->playerID, info->playerName);
 }
 
 void CallbackPing(void * packet, void * passthrough) {
         struct PacketServerPing* ping = packet;
         struct GameState* gameState = passthrough;
 
-        printf("Unhandled ping!");
+        printf("Unhandled ping!\n");
 }

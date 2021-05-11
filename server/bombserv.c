@@ -18,16 +18,21 @@
 #define HOST "127.0.0.1"
 #define PORT 3001
 unsigned char buffer[PACKET_MAX_BUFFER];
+int clientFDs[MAX_CLIENTS];
 int clientCount = 0;
+int movableObjectCont = 0;
 int startGame = 0;
 int gameRunning = 0;
 int mainSocket = 0;
+char newClientName[32], newClienColor;
 allClients* firstClient;
 struct PacketGameAreaInfo pgai;
 
 static void CallbackClientId(void* packet, void* data) {
         struct PacketClientId* pcid = packet;
         printf("protocol version = %u, player name = %s, player color = %c\n", pcid->protoVersion, pcid->playerName, pcid->playerColor);
+        strcpy(newClientName, pcid->playerName);
+        newClienColor = pcid->playerColor;
 }
 
 static void CallbackClientInput(void* packet, void* data) {
@@ -109,7 +114,6 @@ int acceptClients() {
                                         currentClient = (allClients*)malloc(sizeof(allClients));
                                         currentClient->client = (client*)malloc(sizeof(client));
                                         currentClient->client->clientID = clientCount;
-                                        printf("New clint id = %d.\n", currentClient->client->clientID);
                                         currentClient->client->fd = clientSocket;
                                         currentClient->next = NULL;
                                         firstClient = currentClient;
@@ -129,7 +133,7 @@ int acceptClients() {
                                         currentClient = currentClient->next;
                                         currentClient->client = (client*)malloc(sizeof(client));
                                         currentClient->client->clientID = clientCount;
-                                        printf("New clint id = %d.\n", currentClient->client->clientID);
+                                        currentClient->client->fd = clientSocket;
                                         currentClient->next = NULL;
 
                                         clientFDs[clientCount] = clientSocket;
@@ -148,9 +152,10 @@ int acceptClients() {
 }
 
 int handleIncomingPackets() {
-
         struct PacketCallbacks pccbks;
         unsigned int len, i;
+        unsigned char packetType;
+        allClients* current = firstClient;
 
         pccbks.callback[PACKET_TYPE_CLIENT_IDENTIFY] = &CallbackClientId;
         pccbks.callback[PACKET_TYPE_CLIENT_INPUT] = &CallbackClientInput;
@@ -173,6 +178,7 @@ int handleIncomingPackets() {
                                                 printf("Couldn't read packet type!\n");
                                                 fflush(NULL);
                                         }
+                                        packetType = buffer[2];
 
                                         /* Length */
                                         if (read(clientFDs[i], &buffer[3], 4) < 0) {
@@ -203,6 +209,25 @@ int handleIncomingPackets() {
                         }
 
                 }
+
+                /* Do something depending on the received packet type */
+                if (packetType == 0) {
+                        while (current->next != NULL)
+                        {
+                                if (current->client->clientID == i) {
+                                        strcpy(current->client->name, newClientName);
+                                        current->client->color = newClienColor;
+                                }
+                                current = current->next;
+                        }
+                        if (current->client->clientID == i) {
+                                strcpy(current->client->name, newClientName);
+                                current->client->color = newClienColor;
+                        }
+                }
+                else if (packetType == 1) {
+
+                }
         }
         return 0;
 }
@@ -226,9 +251,14 @@ int addPlayers() {
 }
 
 int updateClients() {
-        int i, len;
+        int i, j, len;
         struct PacketGameAreaInfo pgai;
         struct PacketServerMessage psm;
+        struct PacketMovableObjects pmo;
+        struct PacketServerPlayers psp;
+        struct PacketServerPlayerInfo players[clientCount];
+        struct PacketMovableObjectInfo objects[MAX_MOVABLE_OBJECTS];
+        allClients* current = firstClient;
 
         pgai.sizeX = 13;
         pgai.sizeY = 13;
@@ -252,7 +282,70 @@ int updateClients() {
                                 return -1;
                         }
                         printf("Sent message to client %d.\n", i);
+
+                        /* Pack and send all player info */
+                        psp.playerCount = clientCount;
+                        for (j = 0; j < clientCount; j++) {
+                                players[j].playerID = current->client->clientID;
+                                strcpy(players[j].playerName, current->client->name);
+                                players[j].playerColor = current->client->color;
+                                players[j].playerPoints = 0;
+                                players[j].playerLives = 3;
+                                if (current->next != NULL) {
+                                        current = current->next;
+                                }
+                                else {
+                                        current = firstClient;
+                                }
+                        }
+                        memcpy(psp.players, players, sizeof(players));
+
+                        len = PacketEncode(buffer, PACKET_TYPE_SERVER_PLAYER_INFO, &psp);
+                        if (send(clientFDs[i], buffer, len, 0) < 0) {
+                                printf("ERROR sending player info");
+                                return -1;
+                        }
+                        else {
+                                printf("Sent player info to client %d!\n", i);
+                        }
+
+                        /* Pack and send all movable object info */
+                        pmo.objectCount = clientCount;
+
+                        for (j = 0; j < clientCount; j++) {
+                                objects[j].objectType = 0;
+                                objects[j].objectID = j;
+                                if (j == 0) {
+                                        objects[j].objectX = 2.5;
+                                        objects[j].objectY = 2.5;
+                                }
+                                else if (j == 1) {
+                                        objects[j].objectX = 12.5;
+                                        objects[j].objectY = 12.5;
+                                }
+                                /* else if (j == 3) {
+                                        objects[j].objectX = 12.5;
+                                        objects[j].objectY = 2.5;
+                                }
+                                else if (j == 4) {
+                                        objects[j].objectX = 12.5;
+                                        objects[j].objectY = 12.5;
+                                } */
+                                objects[j].movement = 0;
+                                objects[j].status = 3;
+                        }
+                        memcpy(pmo.movableObjects, objects, sizeof(objects));
+
+                        len = PacketEncode(buffer, PACKET_TYPE_MOVABLE_OBJECTS, &pmo);
+                        if (send(clientFDs[i], buffer, len, 0) < 0) {
+                                printf("ERROR sending player info");
+                                return -1;
+                        }
+                        else {
+                                printf("Sent movable object info to client %d!\n", i);
+                        }
                 }
+
 
                 /* if (current->client->inGame == 1) {
 

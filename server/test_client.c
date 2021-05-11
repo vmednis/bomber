@@ -25,14 +25,24 @@ static void CallbacGameAreaInfo(void* packet, void* data) {
         struct PacketGameAreaInfo* pgai = packet;
         printf("sizeX = %u, sizeY = %u, blockID's = %s\n", pgai->sizeX, pgai->sizeY, pgai->blockIDs);
         for (i = 0; i < 169; i++) {
-                printf("%d",pgai->blockIDs[i]);
+                printf("%d", pgai->blockIDs[i]);
         }
-        printf("\n");        
+        printf("\n");
 }
 
 static void CallbackMovableObjects(void* packet, void* data) {
+        int i;
         struct PacketMovableObjects* pmo = packet;
-        pmo = pmo;
+        printf("player count = %u\n\n", pmo->objectCount);
+        for (i = 0; i < pmo->objectCount; i++) {
+                printf("Object type = %u\n", pmo->movableObjects[i].objectType);
+                printf("Object ID = %u\n", pmo->movableObjects[i].objectID);
+                printf("X = %.6f\n", pmo->movableObjects[i].objectX);
+                printf("Y = %.6f\n", pmo->movableObjects[i].objectY);
+                printf("Movement = %u\n", pmo->movableObjects[i].movement);
+                printf("Status = %u\n", pmo->movableObjects[i].status);
+        }
+        printf("\n");
 }
 
 static void CallbackServerMessage(void* packet, void* data) {
@@ -41,8 +51,18 @@ static void CallbackServerMessage(void* packet, void* data) {
 }
 
 static void CallbackServerPlayers(void* packet, void* data) {
+        int i;
         struct PacketServerPlayers* psp = packet;
-        psp = psp;
+        printf("player count = %u\n\n", psp->playerCount);
+        for (i = 0; i < psp->playerCount; i++) {
+                printf("PlayerID = %u\n", psp->players[i].playerID);
+                printf("Player name = %s\n", psp->players[i].playerName);
+                printf("Player color = %u\n", psp->players[i].playerColor);
+                printf("Player points = %u\n", psp->players[i].playerPoints);
+                printf("Player lives = %u\n", psp->players[i].playerLives);
+        }
+        printf("\n");
+
 }
 
 int main()
@@ -94,7 +114,7 @@ int main()
                         printf("error sending message");
                         return -1;
                 }
-          
+
                 /* Accept or decline from serever */
                 read(my_socket, &buffer[0], 13);
                 if (buffer[0] == 0xff) {
@@ -157,7 +177,7 @@ int main()
                                         fflush(NULL);
                                 }
                         }
-                        
+
                 }
         }
         return 0;

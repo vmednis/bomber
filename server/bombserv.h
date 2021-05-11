@@ -12,8 +12,11 @@ typedef struct client
         int clientID;
         int fd;
         char name[32];
+        char color;
         int inGame;
         int readyForGame;
+        float x;
+        float y;
 } client;
 
 typedef struct allClients
@@ -22,13 +25,11 @@ typedef struct allClients
         struct allClients* next;
 } allClients;
 
-int clientFDs[MAX_CLIENTS];
-
 /* Default game arena */
 unsigned char blocks[169] = {
                                 1,1,1,1,1,1,1,1,1,1,1,1,1,
-                                1,0,0,2,2,2,2,2,2,2,0,0,1,
-                                1,0,1,2,1,2,1,2,1,2,1,0,1,
+                                1,0,0,2,2,2,2,2,2,2,2,2,1,
+                                1,0,1,2,1,2,1,2,1,2,1,2,1,
                                 1,2,2,2,2,2,2,2,2,2,2,2,1,
                                 1,2,1,2,1,2,1,2,1,2,1,2,1,
                                 1,2,2,2,2,2,2,2,2,2,2,2,1,
@@ -36,8 +37,8 @@ unsigned char blocks[169] = {
                                 1,2,2,2,2,2,2,2,2,2,2,2,1,
                                 1,2,1,2,1,2,1,2,1,2,1,2,1,
                                 1,2,2,2,2,2,2,2,2,2,2,2,1,
-                                1,0,1,2,1,2,1,2,1,2,1,0,1,
-                                1,0,0,2,2,2,2,2,2,2,0,0,1,
+                                1,2,1,2,1,2,1,2,1,2,1,0,1,
+                                1,2,2,2,2,2,2,2,2,2,0,0,1,
                                 1,1,1,1,1,1,1,1,1,1,1,1,1
 };
 

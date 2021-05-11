@@ -88,7 +88,7 @@ static void TestPackets() {
 
         pmo.objectCount = 2;
         memcpy(pmo.movableObjects, objects, sizeof(objects));
-        len = PacketEncode(buffer, PACKET_TYPE_MOVABLE_OBJECTS, &pmo); /* 31 */
+        len = PacketEncode(buffer, PACKET_TYPE_MOVABLE_OBJECTS, &pmo);
         PacketDecode(buffer, len, &pccbks, NULL);
 
         psm.messageType = 2;

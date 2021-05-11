@@ -31,8 +31,18 @@ static void CallbacGameAreaInfo(void* packet, void* data) {
 }
 
 static void CallbackMovableObjects(void* packet, void* data) {
+        int i;
         struct PacketMovableObjects* pmo = packet;
-        pmo = pmo;
+        printf("player count = %u\n\n", pmo->objectCount);
+        for (i = 0; i < pmo->objectCount; i++) {
+                printf("Object type = %u\n", pmo->movableObjects[i].objectType);
+                printf("Object ID = %u\n", pmo->movableObjects[i].objectID);
+                printf("X = %.6f\n", pmo->movableObjects[i].objectX);
+                printf("Y = %.6f\n", pmo->movableObjects[i].objectY);
+                printf("Movement = %u\n", pmo->movableObjects[i].movement);
+                printf("Status = %u\n", pmo->movableObjects[i].status);
+        }
+        printf("\n");
 }
 
 static void CallbackServerMessage(void* packet, void* data) {
@@ -52,12 +62,12 @@ static void CallbackServerPlayers(void* packet, void* data) {
                 printf("Player lives = %u\n", psp->players[i].playerLives);
         }
         printf("\n");
-       
+
 }
 
 int main()
 {
-        int my_socket = 0;      
+        int my_socket = 0;
         struct sockaddr_in remote_address;
         remote_address.sin_family = AF_INET;
         remote_address.sin_port = htons(PORT);

@@ -285,7 +285,6 @@ int updateClients() {
                         /* Pack and send all player info */
                         psp.playerCount = clientCount;
                         for (j = 0; j < clientCount; j++) {
-                                printf("ID = %d\n", current->client->clientID);
                                 players[j].playerID = current->client->clientID;
                                 strcpy(players[j].playerName, current->client->name);
                                 players[j].playerColor = current->client->color;
@@ -313,7 +312,36 @@ int updateClients() {
                         pmo.objectCount = clientCount;
 
                         for (j = 0; j < clientCount; j++) {
+                                objects[j].objectType = 0;
+                                objects[j].objectID = j;
+                                if (j == 0) {
+                                        objects[j].objectX = 2.5;
+                                        objects[j].objectY = 7.5;
+                                }
+                                else if (j == 1) {
+                                        objects[j].objectX = 12.5;
+                                        objects[j].objectY = 7.5;
+                                }
+                                /* else if (j == 3) {
+                                        objects[j].objectX = 12.5;
+                                        objects[j].objectY = 2.5;
+                                }
+                                else if (j == 4) {
+                                        objects[j].objectX = 12.5;
+                                        objects[j].objectY = 12.5;
+                                } */
+                                objects[j].movement = 0;
+                                objects[j].status = 3;
+                        }
+                        memcpy(pmo.movableObjects, objects, sizeof(objects));
 
+                        len = PacketEncode(buffer, PACKET_TYPE_MOVABLE_OBJECTS, &pmo);
+                        if (send(clientFDs[i], buffer, len, 0) < 0) {
+                                printf("ERROR sending player info");
+                                return -1;
+                        }
+                        else {
+                                printf("Sent movable object info to clients!\n");
                         }
                 }
 

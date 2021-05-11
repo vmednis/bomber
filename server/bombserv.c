@@ -152,7 +152,6 @@ int acceptClients() {
 }
 
 int handleIncomingPackets() {
-
         struct PacketCallbacks pccbks;
         unsigned int len, i;
         unsigned char packetType;
@@ -226,7 +225,9 @@ int handleIncomingPackets() {
                                 current->client->color = newClienColor;
                         }
                 }
-                printf("New client name = %s.\n", current->client->name);
+                else if (packetType == 1) {
+
+                }
         }
         return 0;
 }
@@ -305,7 +306,7 @@ int updateClients() {
                                 return -1;
                         }
                         else {
-                                printf("Sent player info to clients!\n");
+                                printf("Sent player info to client %d!\n", i);
                         }
 
                         /* Pack and send all movable object info */
@@ -316,11 +317,11 @@ int updateClients() {
                                 objects[j].objectID = j;
                                 if (j == 0) {
                                         objects[j].objectX = 2.5;
-                                        objects[j].objectY = 7.5;
+                                        objects[j].objectY = 2.5;
                                 }
                                 else if (j == 1) {
                                         objects[j].objectX = 12.5;
-                                        objects[j].objectY = 7.5;
+                                        objects[j].objectY = 12.5;
                                 }
                                 /* else if (j == 3) {
                                         objects[j].objectX = 12.5;
@@ -341,7 +342,7 @@ int updateClients() {
                                 return -1;
                         }
                         else {
-                                printf("Sent movable object info to clients!\n");
+                                printf("Sent movable object info to client %d!\n", i);
                         }
                 }
 

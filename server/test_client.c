@@ -122,12 +122,12 @@ int main()
                 }
 
                 /* Client input */
-                /* len = PacketEncode(buffer, PACKET_TYPE_CLIENT_INPUT, &pci);
+                len = PacketEncode(buffer, PACKET_TYPE_CLIENT_INPUT, &pci);
 
                 if (send(my_socket, buffer, len, 0) < 0) {
                         printf("error sending message");
                         return -1;
-                } */
+                }
 
                 while (1)
                 {

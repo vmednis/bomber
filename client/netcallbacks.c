@@ -32,8 +32,18 @@ void CallbackMovableObj(void * packet, void * passthrough) {
         struct PacketMovableObjects* movable = packet;
         struct PacketMovableObjectInfo info;
         struct GameObject* obj;
+        struct HashmapIterator* iter;
+        unsigned int objsToRemove[4096];
         unsigned int i = 0;
+        unsigned int len = 0;
 
+        /* Mark all the old ones*/
+        iter = HashmapIterator(gameState->objects);
+        while((obj = HashmapNext(iter))) {
+                obj->remove = 1;
+        }
+
+        /* Updates/Inserts */
         while (i < movable->objectCount) {
                 info = movable->movableObjects[i];
                 obj = HashmapGet(gameState->objects, info.objectID);
@@ -46,6 +56,21 @@ void CallbackMovableObj(void * packet, void * passthrough) {
                 obj->x = info.objectX;
                 obj->y = info.objectY;
                 obj->remove = 0;
+                i++;
+        }
+
+        /* Remove the ones that weren't updated */
+        len = 0;
+        iter = HashmapIterator(gameState->objects);
+        while((obj = HashmapNext(iter))) {
+                if(obj->remove) {
+                        objsToRemove[len] = obj->id;
+                        len++;
+                }
+        }
+        i = 0;
+        while(i < len) {
+                HashmapRemove(gameState->objects, objsToRemove[i]);
                 i++;
         }
 }

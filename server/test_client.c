@@ -10,9 +10,46 @@
 #include <string.h>
 #include "../shared/packet.h"
 #include "../client/tests.h"
+#include "bombserv.h"
 
 #define HOST "127.0.0.1"
-#define PORT 3000
+#define PORT 3001
+
+static void CallbackServerId(void* packet, void* data) {
+        struct PacketServerId* psid = packet;
+        printf("protocol version = %u, client accepted = %u\n", psid->protoVersion, psid->clientAccepted);
+        fflush(NULL);
+}
+
+static void CallbacGameAreaInfo(void* packet, void* data) {
+        int i;
+        struct PacketGameAreaInfo* pgai = packet;
+        printf("sizeX = %u, sizeY = %u, blockID's = %s\n", pgai->sizeX, pgai->sizeY, pgai->blockIDs);
+        for (i = 0; i < 169; i++) {
+                printf("%d",pgai->blockIDs[i]);
+        }
+        printf("\n");
+        while (1)
+        {
+                
+        }
+        
+}
+
+static void CallbackMovableObjects(void* packet, void* data) {
+        struct PacketMovableObjects* pmo = packet;
+        pmo = pmo;
+}
+
+static void CallbackServerMessage(void* packet, void* data) {
+        struct PacketServerMessage* psm = packet;
+        psm = psm;
+}
+
+static void CallbackServerPlayers(void* packet, void* data) {
+        struct PacketServerPlayers* psp = packet;
+        psp = psp;
+}
 
 int main()
 {
@@ -21,6 +58,7 @@ int main()
         remote_address.sin_family = AF_INET;
         remote_address.sin_port = htons(PORT);
         unsigned char buffer[PACKET_MAX_BUFFER];
+        struct PacketCallbacks pccbks;
         struct PacketClientId pcid;
         struct PacketClientInput pci;
         /* struct PacketClientMessage pcm; */
@@ -33,6 +71,12 @@ int main()
         pci.movementX = 7;
         pci.movementY = 4;
         pci.action = 1;
+
+        pccbks.callback[PACKET_TYPE_SERVER_IDENTIFY] = &CallbackServerId;
+        pccbks.callback[PACKET_TYPE_SERVER_GAME_AREA] = &CallbacGameAreaInfo;
+        pccbks.callback[PACKET_TYPE_MOVABLE_OBJECTS] = &CallbackMovableObjects;
+        pccbks.callback[PACKET_TYPE_SERVER_MESSAGE] = &CallbackServerMessage;
+        pccbks.callback[PACKET_TYPE_SERVER_PLAYER_INFO] = &CallbackServerPlayers;
 
         inet_pton(AF_INET, HOST, &remote_address.sin_addr);
 
@@ -52,19 +96,76 @@ int main()
         {
                 /* Client ID */
                 len = PacketEncode(buffer, PACKET_TYPE_CLIENT_IDENTIFY, &pcid);
-                printf("%u", buffer[len - 1]);
-                fflush(NULL);
                 if (send(my_socket, buffer, len, 0) < 0) {
                         printf("error sending message");
                         return -1;
                 }
+          
+                /* Accept or decline from serever */
+                read(my_socket, &buffer[0], 13);
+                if (buffer[0] == 0xff) {
+                        PacketDecode(buffer, 13, &pccbks, NULL);
+                }
+
                 /* Client input */
                 len = PacketEncode(buffer, PACKET_TYPE_CLIENT_INPUT, &pci);
-                printf("%u", buffer[len - 1]);
-                fflush(NULL);
+
                 if (send(my_socket, buffer, len, 0) < 0) {
                         printf("error sending message");
                         return -1;
+                }
+
+                while (1)
+                {
+                        if (read(my_socket, &buffer[0], 1) < 0) {
+                                printf("No packet in buffer!\n");
+                                fflush(NULL);
+                        }
+                        else if (buffer[0] == 0xff) {
+                                if (read(my_socket, &buffer[1], 1) < 0) {
+                                        printf("Couldn't read packet!\n");
+                                        fflush(NULL);
+                                }
+                                if (buffer[1] == 0x00) {
+                                        /* Type */
+                                        if (read(my_socket, &buffer[2], 1) < 0) {
+                                                printf("Couldn't read packet type!\n");
+                                                fflush(NULL);
+                                        }
+
+                                        /* Length */
+                                        if (read(my_socket, &buffer[3], 4) < 0) {
+                                                printf("Couldn't read packet length!\n");
+                                                fflush(NULL);
+                                        }
+
+                                        PACKET_BUFFER_PICK(buffer, 3, unsigned int, len, ntohl);
+
+                                        /* Data */
+                                        if (read(my_socket, &buffer[7], (len - 7)) < 0) {
+                                                printf("Couldn't read packet data!\n");
+                                                fflush(NULL);
+                                        }
+                                        /* Ckecksum */
+                                        if (read(my_socket, &buffer[len], 1) < 0) {
+                                                printf("Couldn't read packet checksum!\n");
+                                                fflush(NULL);
+                                        }
+
+                                        len++;
+
+                                        printf("Packet length = %d.\n", len);
+                                        fflush(NULL);
+                                        if (buffer[0] == 0xff) {
+                                                printf("GOT HERE\n");
+                                                fflush(NULL);
+                                                PacketDecode(buffer, len, &pccbks, NULL);
+                                        }
+
+                                        printf("\n");
+                                        fflush(NULL);
+                                }
+                        }
                 }
         }
         return 0;

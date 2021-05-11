@@ -262,7 +262,6 @@ int gameloop() {
                 }
                 sleep(1);
         }
-
         return 0;
 }
 

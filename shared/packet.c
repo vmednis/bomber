@@ -38,8 +38,8 @@ static void UnpackPacketServerPlayerInfo(unsigned char* buffer, void* packet);
 
 int PacketEncode(unsigned char* buffer, unsigned char type, void* packet) {
         unsigned char tmpBuffer[PACKET_MAX_BUFFER];
-        int offset = 0;
-        int ptr = 0;
+        unsigned int offset = 0;
+        unsigned int ptr = 0;
         unsigned int len = 0;
         unsigned char check = 0;
 
@@ -131,6 +131,7 @@ int PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbac
         }
 
         /* Check the checksum */
+        #ifndef PACKET_IGNORE_CHCKSUM
         while (ptr < len - 1) {
                 check ^= buffer[ptr];
                 ptr++;
@@ -138,6 +139,7 @@ int PacketDecode(unsigned char* buffer, int len, struct PacketCallbacks* callbac
         if (buffer[len - 1] != check) {
                 return PACKET_ERR_DECODE_CHECKSUM;
         }
+        #endif
 
         /* Get the type */
         type = buffer[2];

@@ -2,9 +2,9 @@ CC = gcc
 CFLAGS = -std=c99 -Wall -Wextra -g -lraylib
 
 ODIR = obj
-SHROBJS = shared/shrtest.o shared/packet.o
+SHROBJS = shared/packet.o
 CLIOBJS = $(SHROBJS) client/bombcli.o client/tests.o
-SRVOBJS = $(SHROBJS) server/bombsrv.o
+SRVOBJS = $(SHROBJS) server/bombserv.o
 
 all: bombcli bombsrv
 

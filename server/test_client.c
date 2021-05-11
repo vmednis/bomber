@@ -58,9 +58,9 @@ int main()
         remote_address.sin_family = AF_INET;
         remote_address.sin_port = htons(PORT);
         unsigned char buffer[PACKET_MAX_BUFFER];
+        struct PacketCallbacks pccbks;
         struct PacketClientId pcid;
         struct PacketClientInput pci;
-        struct PacketCallbacks pccbks;
         /* struct PacketClientMessage pcm; */
         unsigned int len;
 
@@ -100,7 +100,7 @@ int main()
                         printf("error sending message");
                         return -1;
                 }
-
+          
                 /* Accept or decline from serever */
                 read(my_socket, &buffer[0], 13);
                 if (buffer[0] == 0xff) {
@@ -109,10 +109,12 @@ int main()
 
                 /* Client input */
                 len = PacketEncode(buffer, PACKET_TYPE_CLIENT_INPUT, &pci);
+
                 if (send(my_socket, buffer, len, 0) < 0) {
                         printf("error sending message");
                         return -1;
                 }
+
                 while (1)
                 {
                         if (read(my_socket, &buffer[0], 1) < 0) {
@@ -166,6 +168,5 @@ int main()
                         }
                 }
         }
-
         return 0;
 }

@@ -11,7 +11,7 @@
 #include "../client/tests.h"
 #include "../client/network.h"
 #include "../client/gamestate.h"
-#include "../client/texture_atlas.h"
+#include "../client/textures.h"
 #include "../client/hashmap.h"
 
 #define UNUSED __attribute__((unused))
@@ -68,6 +68,7 @@ void LoadTextures(Texture2D* atlas) {
         atlas[TEXTURE_PLAYER_LEFT] = LoadTexture("assets/player_left.png");
         atlas[TEXTURE_PLAYER_RIGHT] = LoadTexture("assets/player_right.png");
         atlas[TEXTURE_PLAYER_BACK] = LoadTexture("assets/player_back.png");
+        atlas[TEXTURE_BOMB] = LoadTexture("assets/bomb.png");
 }
 
 void SetupGameState(struct GameState * gameState) {
@@ -135,7 +136,7 @@ void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, UNUSED floa
         struct HashmapIterator* iter;
         struct GameObject* curobj;
 
-        ClearBackground(RAYWHITE);
+        ClearBackground((Color) {0x5b, 0x5d, 0x60, 0xff});
 
         /* Draw world */
         for(y = 0; y < gameState->worldY; y++) {
@@ -155,6 +156,7 @@ void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, UNUSED floa
                         DrawTexture(textureAtlas[TEXTURE_PLAYER_FRONT], curobj->x * 64.0, curobj->y * 64.0, CalculatePlayerColor(curobj->tint));
                         break;
                 case Bomb:
+                        DrawTexture(textureAtlas[TEXTURE_BOMB], curobj->x * 64.0, curobj->y * 64.0, WHITE);
                         break;
                 }
         }

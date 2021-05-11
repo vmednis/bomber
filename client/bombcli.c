@@ -136,7 +136,7 @@ void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, UNUSED floa
         struct HashmapIterator* iter;
         struct GameObject* curobj;
 
-        ClearBackground(RAYWHITE);
+        ClearBackground((Color) {0x5b, 0x5d, 0x60, 0xff});
 
         /* Draw world */
         for(y = 0; y < gameState->worldY; y++) {

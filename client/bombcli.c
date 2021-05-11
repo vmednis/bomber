@@ -12,6 +12,7 @@
 #include "../client/network.h"
 #include "../client/gamestate.h"
 #include "../client/texture_atlas.h"
+#include "../client/hashmap.h"
 
 #define UNUSED __attribute__((unused))
 #define SCREEN_WIDTH 960
@@ -31,8 +32,21 @@ int main() {
         struct NetworkState netState = {0};
         struct GameState gameState = {0};
         Texture2D textureAtlas[TEXTURE_ATLAS_SIZE] = {0};
+        struct GameObject go0, go1;
 
         SelfTest();
+        gameState.objects = HashmapNew();
+        go0.x = 64;
+        go0.y = 64;
+        go0.tint = 64;
+        go0.type = Player;
+        HashmapPut(gameState.objects, 1, &go0);
+
+        go1.x = 640;
+        go1.y = 64;
+        go1.tint = 192;
+        go1.type = Player;
+        HashmapPut(gameState.objects, 99, &go1);
 
         InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Bomber Client");
         LoadTextures(textureAtlas);
@@ -124,6 +138,8 @@ Color CalculatePlayerColor(unsigned int color) {
 void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, UNUSED float delta) {
         int x, y;
         unsigned char tile;
+        struct HashmapIterator* iter;
+        struct GameObject* curobj;
 
         ClearBackground(RAYWHITE);
 
@@ -138,7 +154,16 @@ void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, UNUSED floa
         }
 
         /* Draw objects */
-        DrawTexture(textureAtlas[TEXTURE_PLAYER_FRONT], 64, 64, CalculatePlayerColor(128));
+        iter = HashmapIterator(gameState->objects);
+        while((curobj = HashmapNext(iter)) != NULL) {
+                switch(curobj->type) {
+                case Player:
+                        DrawTexture(textureAtlas[TEXTURE_PLAYER_FRONT], curobj->x, curobj->y, CalculatePlayerColor(curobj->tint));
+                        break;
+                case Bomb:
+                        break;
+                }
+        }
 }
 
 void SetupNetwork(struct NetworkState* netState) {

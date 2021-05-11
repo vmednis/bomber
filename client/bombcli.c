@@ -24,6 +24,10 @@ void ProcessInput(struct GameState* gameState, struct NetworkState* netState);
 
 void CallbackServerId(void * packet, void * passthrough);
 void CallbackGameArea(void * packet, void * passthrough);
+void CallbackMovableObj(void * packet, void * passthrough);
+void CallbackMessage(void * packet, void * passthrough);
+void CallbackPlayerInfo(void * packet, void * passthrough);
+void CallbackPing(void * packet, void * passthrough);
 
 static struct PacketCallbacks packetCallbacks = {0};
 
@@ -40,7 +44,7 @@ int main() {
         SetupCallbacks();
 
         strcpy(netState.ip, "127.0.0.1");
-        netState.port = 13337;
+        netState.port = 3001;
         SetupNetwork(&netState);
 
         while(!WindowShouldClose()) {
@@ -67,6 +71,10 @@ void LoadTextures(Texture2D* atlas) {
 void SetupCallbacks() {
         packetCallbacks.callback[PACKET_TYPE_SERVER_IDENTIFY] = &CallbackServerId;
         packetCallbacks.callback[PACKET_TYPE_SERVER_GAME_AREA] = &CallbackGameArea;
+        packetCallbacks.callback[PACKET_TYPE_MOVABLE_OBJECTS] = &CallbackMovableObj;
+        packetCallbacks.callback[PACKET_TYPE_SERVER_MESSAGE] = &CallbackMessage;
+        packetCallbacks.callback[PACKET_TYPE_SERVER_PLAYER_INFO] = &CallbackPlayerInfo;
+        packetCallbacks.callback[PACKET_TYPE_SERVER_PING] = &CallbackPing;
 }
 
 void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, UNUSED float delta) {
@@ -91,14 +99,26 @@ void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, UNUSED floa
 void SetupNetwork(struct NetworkState* netState) {
         struct sockaddr_in addr;
         char yes = 1;
+        struct PacketClientId pci = {0};
+        unsigned char buffer[PACKET_MAX_BUFFER];
+        unsigned int len;
 
         addr.sin_family = AF_INET;
         addr.sin_port = htons(netState->port);
         inet_pton(AF_INET, netState->ip, &addr.sin_addr);
 
+        /* Connect to the server */
         netState->fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
         setsockopt(netState->fd, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes));
         connect(netState->fd, (struct sockaddr *) &addr, sizeof(addr));
+
+        /* Introduce yourself ot the server */
+        pci.protoVersion = 0x00;
+        strcpy(pci.playerName, "Client");
+        pci.playerColor = 'x';
+
+        len = PacketEncode(buffer, PACKET_TYPE_CLIENT_IDENTIFY, &pci);
+        send(netState->fd, buffer, len, 0);
 }
 
 void ConsumePacket(unsigned char *buffer, unsigned int len, void *data) {
@@ -191,4 +211,32 @@ void CallbackGameArea(void * packet, void * passthrough) {
         gameState->worldX = gameArea->sizeX;
         gameState->worldY = gameArea->sizeY;
         memcpy(gameState->world, gameArea->blockIDs, gameArea->sizeY * gameArea->sizeX);
+}
+
+void CallbackMovableObj(void * packet, void * passthrough) {
+        struct PacketMovableObjects* movable = packet;
+        struct GameState* gameState = passthrough;
+
+        printf("Unhandled MovableObj: count=%i", movable->objectCount);
+}
+
+void CallbackMessage(void * packet, void * passthrough) {
+        struct PacketServerMessage* msg = packet;
+        struct GameState* gameState = passthrough;
+
+        printf("Unhandled ServerMsg: type=%i, data=%s", msg->messageType, msg->message);
+}
+
+void CallbackPlayerInfo(void * packet, void * passthrough) {
+        struct PacketServerPlayerInfo* info = packet;
+        struct GameState* gameState = passthrough;
+
+        printf("Unhandled player info: id=%i, name=%s", info->playerID, info->playerName);
+}
+
+void CallbackPing(void * packet, void * passthrough) {
+        struct PacketServerPing* ping = packet;
+        struct GameState* gameState = passthrough;
+
+        printf("Unhandled ping!");
 }

@@ -18,7 +18,6 @@
 static void CallbackServerId(void* packet, void* data) {
         struct PacketServerId* psid = packet;
         printf("protocol version = %u, client accepted = %u\n", psid->protoVersion, psid->clientAccepted);
-        fflush(NULL);
 }
 
 static void CallbacGameAreaInfo(void* packet, void* data) {
@@ -28,12 +27,7 @@ static void CallbacGameAreaInfo(void* packet, void* data) {
         for (i = 0; i < 169; i++) {
                 printf("%d",pgai->blockIDs[i]);
         }
-        printf("\n");
-        while (1)
-        {
-                
-        }
-        
+        printf("\n");        
 }
 
 static void CallbackMovableObjects(void* packet, void* data) {
@@ -43,7 +37,7 @@ static void CallbackMovableObjects(void* packet, void* data) {
 
 static void CallbackServerMessage(void* packet, void* data) {
         struct PacketServerMessage* psm = packet;
-        psm = psm;
+        printf("message type = %u, message = %s\n", psm->messageType, psm->message);
 }
 
 static void CallbackServerPlayers(void* packet, void* data) {
@@ -154,11 +148,8 @@ int main()
 
                                         len++;
 
-                                        printf("Packet length = %d.\n", len);
                                         fflush(NULL);
                                         if (buffer[0] == 0xff) {
-                                                printf("GOT HERE\n");
-                                                fflush(NULL);
                                                 PacketDecode(buffer, len, &pccbks, NULL);
                                         }
 
@@ -166,6 +157,7 @@ int main()
                                         fflush(NULL);
                                 }
                         }
+                        
                 }
         }
         return 0;

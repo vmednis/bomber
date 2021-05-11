@@ -316,12 +316,12 @@ int updateClients() {
                                 objects[j].objectType = 0;
                                 objects[j].objectID = j;
                                 if (j == 0) {
-                                        objects[j].objectX = 2.5;
-                                        objects[j].objectY = 2.5;
+                                        objects[j].objectX = 1.0;
+                                        objects[j].objectY = 1.0;
                                 }
                                 else if (j == 1) {
-                                        objects[j].objectX = 12.5;
-                                        objects[j].objectY = 12.5;
+                                        objects[j].objectX = 11.0;
+                                        objects[j].objectY = 11.0;
                                 }
                                 /* else if (j == 3) {
                                         objects[j].objectX = 12.5;

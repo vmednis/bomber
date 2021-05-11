@@ -25,9 +25,9 @@ static void CallbacGameAreaInfo(void* packet, void* data) {
         struct PacketGameAreaInfo* pgai = packet;
         printf("sizeX = %u, sizeY = %u, blockID's = %s\n", pgai->sizeX, pgai->sizeY, pgai->blockIDs);
         for (i = 0; i < 169; i++) {
-                printf("%d",pgai->blockIDs[i]);
+                printf("%d", pgai->blockIDs[i]);
         }
-        printf("\n");        
+        printf("\n");
 }
 
 static void CallbackMovableObjects(void* packet, void* data) {
@@ -41,8 +41,22 @@ static void CallbackServerMessage(void* packet, void* data) {
 }
 
 static void CallbackServerPlayers(void* packet, void* data) {
+        int i;
         struct PacketServerPlayers* psp = packet;
-        psp = psp;
+        printf("player count = %u\n", psp->playerCount);
+        for (i = 0; i < psp->playerCount; i++) {
+                printf("PlayerID = %u\n", psp->players->playerID);
+                printf("Player name = %s\n", psp->players->playerName);
+                printf("Player color = %u\n", psp->players->playerColor);
+                printf("Player points = %u\n", psp->players->playerPoints);
+                printf("PlayerID = %u\n", psp->players->playerLives);
+        }
+        printf("\n");
+        while (1)
+        {
+                
+        }
+        
 }
 
 int main()
@@ -94,7 +108,7 @@ int main()
                         printf("error sending message");
                         return -1;
                 }
-          
+
                 /* Accept or decline from serever */
                 read(my_socket, &buffer[0], 13);
                 if (buffer[0] == 0xff) {
@@ -102,12 +116,12 @@ int main()
                 }
 
                 /* Client input */
-                len = PacketEncode(buffer, PACKET_TYPE_CLIENT_INPUT, &pci);
+                /* len = PacketEncode(buffer, PACKET_TYPE_CLIENT_INPUT, &pci);
 
                 if (send(my_socket, buffer, len, 0) < 0) {
                         printf("error sending message");
                         return -1;
-                }
+                } */
 
                 while (1)
                 {
@@ -157,7 +171,7 @@ int main()
                                         fflush(NULL);
                                 }
                         }
-                        
+
                 }
         }
         return 0;

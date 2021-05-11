@@ -9,6 +9,7 @@ struct GameState {
         unsigned char worldY;
         unsigned char world[WORLD_MAX_Y * WORLD_MAX_X];
 
+        int pingrequested;
         float timer;
 };
 

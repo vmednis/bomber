@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -std=c99 -Wall -Wextra -g -lraylib
+CFLAGS = -std=c99 -Wall -Wextra -g -lraylib -lm
 
 ODIR = obj
 SHROBJS = shared/packet.o

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <raylib.h>
 #include <unistd.h>
+#include <math.h>
 #include <sys/socket.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
@@ -60,6 +61,10 @@ int main() {
 void LoadTextures(Texture2D* atlas) {
         atlas[TEXTURE_WALL_SOLID] = LoadTexture("assets/wall_solid.png");
         atlas[TEXTURE_WALL_BREAKABLE] = LoadTexture("assets/wall_breakable.png");
+        atlas[TEXTURE_PLAYER_FRONT] = LoadTexture("assets/player_front.png");
+        atlas[TEXTURE_PLAYER_LEFT] = LoadTexture("assets/player_left.png");
+        atlas[TEXTURE_PLAYER_RIGHT] = LoadTexture("assets/player_right.png");
+        atlas[TEXTURE_PLAYER_BACK] = LoadTexture("assets/player_back.png");
 }
 
 void SetupCallbacks() {
@@ -69,6 +74,51 @@ void SetupCallbacks() {
         packetCallbacks.callback[PACKET_TYPE_SERVER_MESSAGE] = &CallbackMessage;
         packetCallbacks.callback[PACKET_TYPE_SERVER_PLAYER_INFO] = &CallbackPlayerInfo;
         packetCallbacks.callback[PACKET_TYPE_SERVER_PING] = &CallbackPing;
+}
+
+Color CalculatePlayerColor(unsigned int color) {
+        float H = color / 255.0;
+        float S = 0.80;
+        float V = 0.85;
+        float R, G, B;
+        float C, X, m;
+
+        /* Formula for HSV to RGB conversion shamelessly stolen from:
+        https://www.rapidtables.com/convert/color/hsv-to-rgb.html*/
+        C = V * S;
+        X = C * (1.0 - (fmod((H / (1.0 / 6.0)), 2.0) - 1.0));
+        m = V - C;
+
+        if (H < 1.0 / 6.0) {
+                R = C;
+                G = X;
+                B = 0;
+        } else if (H < 2.0 / 6.0) {
+                R = X;
+                G = C;
+                B = 0;
+        } else if (H < 3.0 / 6.0) {
+                R = 0;
+                G = C;
+                B = X;
+        } else if (H < 4.0 / 6.0) {
+                R = 0;
+                G = X;
+                B = C;
+        } else if (H < 5.0 / 6.0) {
+                R = X;
+                G = 0;
+                B = C;
+        } else {
+                R = C;
+                G = 0;
+                B = X;
+        }
+
+        R = (R + m) * 255.0;
+        G = (G + m) * 255.0;
+        B = (B + m) * 255.0;
+        return (Color) {(unsigned char) R, (unsigned char) G, (unsigned char) B, 255};
 }
 
 void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, UNUSED float delta) {
@@ -88,6 +138,7 @@ void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, UNUSED floa
         }
 
         /* Draw objects */
+        DrawTexture(textureAtlas[TEXTURE_PLAYER_FRONT], 64, 64, CalculatePlayerColor(128));
 }
 
 void SetupNetwork(struct NetworkState* netState) {

@@ -30,13 +30,14 @@ static void CallbackClientId(void* packet, void* data) {
         player = &state->gameState->objects[state->playerId];
         strcpy(player->extra.player.name, pcid->playerName);
         player->extra.player.color = pcid->playerColor;
+        player->extra.player.toBeAccepted = 1;
 }
 
 static void CallbackClientInput(void* packet, void* data) {
         struct SourcedGameState* state = data;
         struct PacketClientInput* pcin = packet;
         struct GameObject* player;
-        float speed = 0.8;
+        float speed = 1.6;
 
         /* Apply player inputs */
         player = &state->gameState->objects[state->playerId];
@@ -234,6 +235,7 @@ int HandleIncomingPackets(struct GameState* gameState) {
 int UpdateClient(int clientId, struct GameState* gameState) {
         unsigned char buffer[PACKET_MAX_BUFFER];
         struct GameObject* obj;
+        struct PacketServerId packId = {0};
         struct PacketGameAreaInfo packWorld = {0};
         struct PacketMovableObjects packObjs = {0};
         struct PacketMovableObjectInfo* packObj;
@@ -244,6 +246,18 @@ int UpdateClient(int clientId, struct GameState* gameState) {
 
 
         fd = gameState->objects[clientId].extra.player.fd;
+
+        /* Send acceptance message */
+        if(gameState->objects[clientId].extra.player.toBeAccepted) {
+                gameState->objects[clientId].extra.player.toBeAccepted = 0;
+                packId.protoVersion = 0x00;
+                packId.clientAccepted = clientId;
+                len = PacketEncode(buffer, PACKET_TYPE_SERVER_IDENTIFY, &packId);
+                if(send(fd, buffer, len, 0) < 0) {
+                        puts("Error sending game area");
+                        /* What happens here? Do we remove the client or something? */
+                }
+        }
 
         /* Nosuta pasauli */
         packWorld.sizeX = gameState->worldX;

@@ -18,6 +18,7 @@ struct GameObjectPlayer {
         int fd;
         char name[32];
         unsigned char color;
+        int toBeAccepted;
 };
 
 struct GameObjectBomb {

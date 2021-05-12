@@ -1,6 +1,8 @@
 #ifndef GAMESTATE_H
 #define GAMESTATE_H
 
+#include <raylib.h>
+
 #define WORLD_MAX_X 255
 #define WORLD_MAX_Y 255
 
@@ -32,6 +34,7 @@ struct GameState {
         unsigned int playerId;
         struct Hashmap* objects;
         struct Hashmap* players;
+        Camera2D camera;
 
         int pingrequested;
         float timer;

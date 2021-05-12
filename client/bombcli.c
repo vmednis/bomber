@@ -25,6 +25,7 @@ void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, float delta
 void SetupNetwork(struct NetworkState* netState);
 void ProcessNetwork(struct GameState* gameState, struct NetworkState* netState);
 void ProcessInput(struct GameState* gameState, struct NetworkState* netState);
+void UpdateCameraBorder(struct GameState* state, int width, int height);
 
 static struct PacketCallbacks packetCallbacks = {0};
 
@@ -50,6 +51,7 @@ int main() {
 
                 ProcessInput(&gameState, &netState);
                 ProcessNetwork(&gameState, &netState);
+                UpdateCameraBorder(&gameState, SCREEN_WIDTH, SCREEN_HEIGHT);
                 gameState.timer += delta;
 
                 BeginDrawing();
@@ -74,6 +76,7 @@ void LoadTextures(Texture2D* atlas) {
 void SetupGameState(struct GameState * gameState) {
         gameState->objects = HashmapNew();
         gameState->players = HashmapNew();
+        gameState->camera.zoom = 1.0f;
 }
 
 void SetupCallbacks() {
@@ -138,6 +141,8 @@ void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, UNUSED floa
 
         ClearBackground((Color) {0x5b, 0x5d, 0x60, 0xff});
 
+        /*Enter world space*/
+        BeginMode2D(gameState->camera);
         /* Draw world */
         for(y = 0; y < gameState->worldY; y++) {
                 for(x = 0; x < gameState->worldX; x++) {
@@ -160,6 +165,8 @@ void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, UNUSED floa
                         break;
                 }
         }
+
+        EndMode2D();
 }
 
 void SetupNetwork(struct NetworkState* netState) {
@@ -262,4 +269,27 @@ void ProcessInput(struct GameState* gameState, struct NetworkState* netState) {
                 len = PacketEncode(buffer, PACKET_TYPE_CLIENT_PING_ANSWER, NULL);
                 send(netState->fd, buffer, len, 0);
         }
+}
+
+void UpdateCameraBorder(struct GameState* state, int width, int height)
+{
+        /*Based on the camera example code https://www.raylib.com/examples.html */
+        Vector2 border = { 0.4f, 0.4f };
+        struct GameObject* player;
+        struct Camera2D* camera;
+
+        camera = &state->camera;
+        if(!(player = HashmapGet(state->objects, state->playerId))) {
+                /* No active player on the grund*/
+                return;
+        }
+
+        Vector2 borderWorldMin = GetScreenToWorld2D((Vector2){ (1 - border.x)*0.5f*width, (1 - border.y)*0.5f*height }, *camera);
+        Vector2 borderWorldMax = GetScreenToWorld2D((Vector2){ (1 + border.x)*0.5f*width, (1 + border.y)*0.5f*height }, *camera);
+        camera->offset = (Vector2){ (1 - border.x)*0.5f * width, (1 - border.y)*0.5f*height };
+
+        if (player->x * 64 < borderWorldMin.x) camera->target.x = player->x * 64;
+        if (player->y * 64 < borderWorldMin.y) camera->target.y = player->y * 64;
+        if (player->x * 64 > borderWorldMax.x) camera->target.x = borderWorldMin.x + (player->x * 64 - borderWorldMax.x);
+        if (player->y * 64 > borderWorldMax.y) camera->target.y = borderWorldMin.y + (player->y * 64 - borderWorldMax.y);
 }

@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <netinet/tcp.h>
 #include <errno.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -26,7 +27,7 @@ static void CallbackClientId(void* packet, void* data) {
         struct GameObject* player;
         printf("protocol version = %u, player name = %s, player color = %c\n", pcid->protoVersion, pcid->playerName, pcid->playerColor);
 
-        player = &state->gameState[state->playerId];
+        player = &state->gameState->objects[state->playerId];
         strcpy(player->extra.player.name, pcid->playerName);
         player->extra.player.color = pcid->playerColor;
 }
@@ -74,7 +75,7 @@ int StartServer() {
                 exit(1);
         }
 
-        fcntl(mainSocket, F_SETFL, O_NONBLOCK);
+        fcntl(mainSocket, F_SETFL, fcntl(mainSocket, F_GETFL) | O_NONBLOCK);
         printf("Main socket is listening!\n");
 
         return 0;
@@ -89,6 +90,7 @@ int AcceptClients(struct GameState* gameState) {
         struct GameObject* obj;
         unsigned int clientCount = 0;
         unsigned int i = 0;
+        char yes = 1;
 
         while(i < MAX_OBJECTS) {
                 obj = &gameState->objects[i];
@@ -109,7 +111,8 @@ int AcceptClients(struct GameState* gameState) {
                 }
                 else {
                         printf("Client succesfully connected!\n");
-                        fcntl(clientSocket, F_SETFL, O_NONBLOCK);
+                        fcntl(clientSocket, F_SETFL, fcntl(clientSocket, F_GETFL) | O_NONBLOCK);
+                        setsockopt(clientSocket, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes));
 
                         if (clientCount > MAX_CLIENTS) {
                                 psid.protoVersion = 0x00;
@@ -134,6 +137,7 @@ int AcceptClients(struct GameState* gameState) {
                                                 obj->velx = 0;
                                                 obj->vely = 0;
                                                 obj->extra.player.fd = clientSocket;
+                                                return 1;
                                         }
                                         i++;
                                 }
@@ -223,9 +227,15 @@ int HandleIncomingPackets(struct GameState* gameState) {
 
 int UpdateClient(int clientId, struct GameState* gameState) {
         unsigned char buffer[PACKET_MAX_BUFFER];
+        struct GameObject* obj;
+        struct PacketGameAreaInfo packWorld = {0};
+        struct PacketMovableObjects packObjs = {0};
+        struct PacketMovableObjectInfo* packObj;
         unsigned int fd;
         unsigned int len;
-        struct PacketGameAreaInfo packWorld;
+        int l2;
+        unsigned int i;
+
 
         fd = gameState->objects[clientId].extra.player.fd;
 
@@ -239,14 +249,32 @@ int UpdateClient(int clientId, struct GameState* gameState) {
                 /* What happens here? Do we remove the client or something? */
         }
 
+        /* Nosuta game objects */
+        i = 0;
+        while (i < MAX_OBJECTS) {
+                obj = &gameState->objects[i];
+                if(obj->active) {
+                        packObj = &packObjs.movableObjects[packObjs.objectCount];
+                        packObj->objectType = obj->type;
+                        packObj->objectID = i;
+                        packObj->objectX = obj->x;
+                        packObj->objectY = obj->y;
+                        packObjs.objectCount++;
+                }
+                i++;
+        }
+        len = PacketEncode(buffer, PACKET_TYPE_MOVABLE_OBJECTS, &packObjs);
+        if((l2 = send(fd, buffer, len, 0)) < 0) {
+                puts("Error sending movable objects");
+                /* What happens here? Do we remove the client or something? */
+        }
+
         return 0;
 }
 
 int UpdateClients(struct GameState* gameState) {
         struct GameObject* obj;
         unsigned int i = 0;
-
-        puts("Snet world!");
 
         while(i < MAX_OBJECTS) {
                 obj = &gameState->objects[i];

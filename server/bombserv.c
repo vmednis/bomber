@@ -1,4 +1,5 @@
 #define _DEFAULT_SOURCE
+#define UNUSED __attribute__((unused))
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -17,21 +18,17 @@
 
 #define HOST "127.0.0.1"
 #define PORT 3001
-int clientFDs[MAX_CLIENTS];
-int clientCount = 0;
-int movableObjectCont = 0;
-int startGame = 0;
-int gameRunning = 0;
 int mainSocket = 0;
-char newClientName[32], newClienColor;
-allClients* firstClient;
-struct PacketGameAreaInfo pgai;
 
 static void CallbackClientId(void* packet, void* data) {
+        struct SourcedGameState* state = data;
         struct PacketClientId* pcid = packet;
+        struct GameObject* player;
         printf("protocol version = %u, player name = %s, player color = %c\n", pcid->protoVersion, pcid->playerName, pcid->playerColor);
-        strcpy(newClientName, pcid->playerName);
-        newClienColor = pcid->playerColor;
+
+        player = &state->gameState[state->playerId];
+        strcpy(player->extra.player.name, pcid->playerName);
+        player->extra.player.color = pcid->playerColor;
 }
 
 static void CallbackClientInput(void* packet, void* data) {
@@ -42,6 +39,10 @@ static void CallbackClientInput(void* packet, void* data) {
 static void CallbackClientMessage(void* packet, void* data) {
         struct PacketClientMessage* pcmsg = packet;
         pcmsg = pcmsg;
+        data = data;
+}
+
+static void CallbackClientPing(UNUSED void* packet, void* data) {
         data = data;
 }
 
@@ -79,14 +80,23 @@ int StartServer() {
         return 0;
 }
 
-int AcceptClients() {
+int AcceptClients(struct GameState* gameState) {
         unsigned char buffer[PACKET_MAX_BUFFER];
         int newClients = 1, clientSocket, len;
         struct sockaddr_in clientAddress;
         socklen_t clientAddressSize = sizeof(clientAddress);
         struct PacketServerId psid;
-        allClients* currentClient = NULL;
-        psid.protoVersion = 0x00;
+        struct GameObject* obj;
+        unsigned int clientCount = 0;
+        unsigned int i = 0;
+
+        while(i < MAX_OBJECTS) {
+                obj = &gameState->objects[i];
+                if(obj->active && obj->type == Player) {
+                        clientCount++;
+                }
+                i++;
+        }
 
         while (newClients) {
                 clientSocket = accept(mainSocket, (struct sockaddr*)&clientAddress, &clientAddressSize);
@@ -100,6 +110,7 @@ int AcceptClients() {
                 else {
                         printf("Client succesfully connected!\n");
                         fcntl(clientSocket, F_SETFL, O_NONBLOCK);
+
                         if (clientCount > MAX_CLIENTS) {
                                 psid.protoVersion = 0x00;
                                 psid.clientAccepted = 0;
@@ -110,40 +121,21 @@ int AcceptClients() {
                                 }
                         }
                         else {
-                                if (clientCount == 0) {
-                                        currentClient = (allClients*)malloc(sizeof(allClients));
-                                        currentClient->client = (client*)malloc(sizeof(client));
-                                        currentClient->client->clientID = clientCount;
-                                        currentClient->client->fd = clientSocket;
-                                        currentClient->next = NULL;
-                                        firstClient = currentClient;
-
-                                        clientFDs[clientCount] = clientSocket;
-                                        clientCount++;
-                                }
-                                else {
-                                        /* Iterate to last client */
-                                        currentClient = firstClient;
-                                        while (currentClient->next != NULL)
-                                        {
-                                                currentClient = currentClient->next;
+                                /* Find a free spot in objects table, that will be client id*/
+                                /* DANGER: Client Id can't be 0 so we start at 1*/
+                                i = 1;
+                                while(i < MAX_OBJECTS) {
+                                        if(!gameState->objects[i].active) {
+                                                obj = &gameState->objects[i];
+                                                obj->active = 1;
+                                                obj->type = Player;
+                                                obj->x = 1;
+                                                obj->y = 1;
+                                                obj->velx = 0;
+                                                obj->vely = 0;
+                                                obj->extra.player.fd = clientSocket;
                                         }
-
-                                        currentClient->next = (allClients*)malloc(sizeof(allClients));
-                                        currentClient = currentClient->next;
-                                        currentClient->client = (client*)malloc(sizeof(client));
-                                        currentClient->client->clientID = clientCount;
-                                        currentClient->client->fd = clientSocket;
-                                        currentClient->next = NULL;
-
-                                        clientFDs[clientCount] = clientSocket;
-                                        clientCount++;
-                                }
-                                psid.clientAccepted = 1;
-                                len = PacketEncode(buffer, PACKET_TYPE_SERVER_IDENTIFY, &psid);
-                                if (send(clientSocket, buffer, len, 0) < 0) {
-                                        printf("ERROR sending accept message to client!\n");
-                                        return -1;
+                                        i++;
                                 }
                         }
                 }
@@ -152,9 +144,10 @@ int AcceptClients() {
 }
 
 /* Handles Client Packets, returns 1 if it read any packet, 0 if there currently are no more packets. */
-int HandleClientPackets(int clientId, struct PacketCallbacks *pckcbks) {
+int HandleClientPackets(int clientId, struct GameState* gameState, struct PacketCallbacks *pckcbks) {
+        struct SourcedGameState sourcedGameState = {0};
         unsigned char buffer[PACKET_MAX_BUFFER];
-        unsigned int fd = clientFDs[clientId];
+        unsigned int fd = gameState->objects[clientId].extra.player.fd;
         unsigned int len;
 
         if (read(fd, &buffer[0], 1) < 0) {
@@ -197,71 +190,72 @@ int HandleClientPackets(int clientId, struct PacketCallbacks *pckcbks) {
 
                         printf("Packet length = %d.\n", len);
                         if (buffer[0] == 0xff) {
-                                PacketDecode(buffer, len, pckcbks, NULL);
+                                sourcedGameState.playerId = clientId;
+                                sourcedGameState.gameState = gameState;
+                                PacketDecode(buffer, len, pckcbks, &sourcedGameState);
                         }
                 }
         }
 
         return 1;
-
-        /* Do something depending on the received packet type */
-        /*
-        if (packetType == 0) {
-                while (current->next != NULL)
-                {
-                        if (current->client->clientID == i) {
-                                strcpy(current->client->name, newClientName);
-                                current->client->color = newClienColor;
-                        }
-                        current = current->next;
-                }
-                if (current->client->clientID == i) {
-                        strcpy(current->client->name, newClientName);
-                        current->client->color = newClienColor;
-                }
-        }
-        else if (packetType == 1) {
-
-        }
-        */
 }
 
-int HandleIncomingPackets() {
-        struct PacketCallbacks pccbks;
-        unsigned int len, i;
-        unsigned char packetType;
-        allClients* current = firstClient;
+int HandleIncomingPackets(struct GameState* gameState) {
+        struct PacketCallbacks cbks;
+        struct GameObject* obj;
+        unsigned int i = 0;
 
-        pccbks.callback[PACKET_TYPE_CLIENT_IDENTIFY] = &CallbackClientId;
-        pccbks.callback[PACKET_TYPE_CLIENT_INPUT] = &CallbackClientInput;
-        pccbks.callback[PACKET_TYPE_CLIENT_MESSAGE] = &CallbackClientMessage;
+        cbks.callback[PACKET_TYPE_CLIENT_IDENTIFY] = &CallbackClientId;
+        cbks.callback[PACKET_TYPE_CLIENT_INPUT] = &CallbackClientInput;
+        cbks.callback[PACKET_TYPE_CLIENT_MESSAGE] = &CallbackClientMessage;
+        cbks.callback[PACKET_TYPE_CLIENT_PING_ANSWER] = &CallbackClientPing;
 
-        for (i = 0; i < clientCount; i++) {
-                /* No klienta viena update laikā var pienākt vairāki packets*/
-                while(HandleClientPackets(i, &pccbks));
+        while(i < MAX_OBJECTS) {
+                obj = &gameState->objects[i];
+                if(obj->active && obj->type == Player) {
+                        /* There can be multiple packets per update from one client*/
+                        while(HandleClientPackets(i, gameState, &cbks));
+                }
+                i++;
         }
         return 0;
 }
 
-/* Add current clients to the game */
-int AddPlayers() {
-        allClients* current = firstClient;
-        while (current->next != NULL) {
-                current->client->inGame = 1;
-                current = current->next;
-        }
-        current->client->inGame = 1;
+int UpdateClient(int clientId, struct GameState* gameState) {
+        unsigned char buffer[PACKET_MAX_BUFFER];
+        unsigned int fd;
+        unsigned int len;
+        struct PacketGameAreaInfo packWorld;
 
-        current = firstClient;
-        while (current->next != NULL) {
-                printf("Client %d in game = %d.\n", current->client->clientID, current->client->inGame);
-                current = current->next;
+        fd = gameState->objects[clientId].extra.player.fd;
+
+        /* Nosuta pasauli */
+        packWorld.sizeX = gameState->worldX;
+        packWorld.sizeY = gameState->worldY;
+        memcpy(packWorld.blockIDs, gameState->world, packWorld.sizeX * packWorld.sizeY);
+        len = PacketEncode(buffer, PACKET_TYPE_SERVER_GAME_AREA, &packWorld);
+        if(send(fd, buffer, len, 0) < 0) {
+                puts("Error sending game area");
+                /* What happens here? Do we remove the client or something? */
         }
-        printf("Client %d in game = %d.\n", current->client->clientID, current->client->inGame);
-        return 1;
+
+        return 0;
 }
 
-int UpdateClients() {
+int UpdateClients(struct GameState* gameState) {
+        struct GameObject* obj;
+        unsigned int i = 0;
+
+        puts("Snet world!");
+
+        while(i < MAX_OBJECTS) {
+                obj = &gameState->objects[i];
+                if(obj->active && obj->type == Player) {
+                        UpdateClient(i, gameState);
+                }
+                i++;
+        }
+        /*
         unsigned char buffer[PACKET_MAX_BUFFER];
         int i, j, len;
         struct PacketGameAreaInfo pgai;
@@ -276,7 +270,6 @@ int UpdateClients() {
         pgai.sizeY = 13;
         memcpy(pgai.blockIDs, blocks, sizeof(blocks));
 
-        /* Send game arena to all players */
         for (i = 0; i < clientCount; i++) {
                 len = PacketEncode(buffer, PACKET_TYPE_SERVER_GAME_AREA, &pgai);
                 if (send(clientFDs[i], buffer, len, 0) < 0) {
@@ -284,7 +277,6 @@ int UpdateClients() {
                         return -1;
                 }
                 printf("Sent game arena to client %d.\n", i);
-                /* Beginning of the round */
                 if (startGame == 1) {
                         psm.messageType = 1;
                         strcpy(psm.message, "Game starting!");
@@ -295,7 +287,6 @@ int UpdateClients() {
                         }
                         printf("Sent message to client %d.\n", i);
 
-                        /* Pack and send all player info */
                         psp.playerCount = clientCount;
                         for (j = 0; j < clientCount; j++) {
                                 players[j].playerID = current->client->clientID;
@@ -321,8 +312,7 @@ int UpdateClients() {
                                 printf("Sent player info to client %d!\n", i);
                         }
 
-                        /* Pack and send all movable object info */
-                        pmo.objectCount = clientCount;
+=                        pmo.objectCount = clientCount;
 
                         for (j = 0; j < clientCount; j++) {
                                 objects[j].objectType = 0;
@@ -335,14 +325,6 @@ int UpdateClients() {
                                         objects[j].objectX = 11.0;
                                         objects[j].objectY = 11.0;
                                 }
-                                /* else if (j == 3) {
-                                        objects[j].objectX = 12.5;
-                                        objects[j].objectY = 2.5;
-                                }
-                                else if (j == 4) {
-                                        objects[j].objectX = 12.5;
-                                        objects[j].objectY = 12.5;
-                                } */
                                 objects[j].movement = 0;
                                 objects[j].status = 3;
                         }
@@ -358,30 +340,52 @@ int UpdateClients() {
                         }
                 }
 
-
-                /* if (current->client->inGame == 1) {
-
-                } */
         }
         startGame = 0;
+        */
         return 0;
 }
 
+static void InitGameState(struct GameState* gameState) {
+        /* Load default map */
+        gameState->worldX = 13;
+        gameState->worldY = 13;
+        memcpy(gameState->world, blocks, gameState->worldX * gameState->worldY);
+}
+
+static void UpdateGameState(struct GameState* gameState, float delta) {
+        struct GameObject* obj;
+        unsigned int i = 0;
+
+        /* Apply velocity*/
+        while(i < MAX_OBJECTS) {
+                obj = &gameState->objects[i];
+                if(obj->active && obj->type == Player) {
+                        /* While bombs can have velocity too currently ignore it to reduce complexity*/
+                        obj->x += obj->velx * delta;
+                        obj->y += obj->vely * delta;
+
+                        /*Todo check colision with walls, easiest way if will be intersecting wall after this don't allow the movement*/
+                        /*More advanced could do some sliding techniques, but yeah nah*/
+                        /*Also better to keep players bounding box a bit smaller than 1x1 to make turning corners easier*/
+                }
+                i++;
+        }
+
+}
+
 int GameLoop() {
+        struct GameState gameState = {0};
+        InitGameState(&gameState);
+
         while (1)
         {
-                AcceptClients();
-                HandleIncomingPackets();
+                AcceptClients(&gameState);
+                HandleIncomingPackets(&gameState);
+                UpdateGameState(&gameState, 1);
+                UpdateClients(&gameState);
 
-                /* Start game */
-                if (gameRunning == 0 && clientCount >= 2) {
-                        printf("Client count = %d.\n", clientCount);
-                        AddPlayers();
-                        startGame = 1;
-                        gameRunning = 1;
-                        printf("Starting game!\n");
-                        UpdateClients();
-                }
+                /*Should be replaced with proper deltas asap*/
                 sleep(1);
         }
         return 0;

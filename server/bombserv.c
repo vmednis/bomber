@@ -366,6 +366,7 @@ static void UpdateGameState(struct GameState* gameState, float delta) {
         unsigned int i = 0;
         float tx, ty;
         float px, py;
+        int bx, by, tc;
 
         /* Apply velocity*/
         while(i < MAX_OBJECTS) {
@@ -438,24 +439,53 @@ static void UpdateGameState(struct GameState* gameState, float delta) {
                                         gameState->objects[obj->extra.bomb.owner].extra.player.bombsRemaining++;
                                 }
 
-                                /*Vert destruction*/
-                                for(i = obj->y - 0.5 ; i < obj->y + 1.5; i++) {
-                                        if(i > 0 && i < gameState->worldY) {
-                                                wall = &gameState->world[i * gameState->worldX + (unsigned int)obj->x];
-                                                if(*wall == 2) {
-                                                        *wall = 0;
-                                                }
+                                /* Destruction */
+                                by = floor(obj->y + 0.5);
+                                bx = floor(obj->x + 0.5);
+                                tc = bx + 2;
+                                for(bx = bx; bx <= tc; bx++) {
+                                        if(bx < 0 || bx > (int) gameState->worldX) continue;
+                                        wall = &gameState->world[by * gameState->worldX + bx];
+                                        if(*wall == 1) {
+                                                break;
                                         }
+                                        *wall = 0;
                                 }
-                                /*Horz destruction*/
-                                for(i = obj->x - 0.5; i < obj->x + 1.5; i++) {
-                                        if(i > 0 && i < gameState->worldX) {
-                                                wall = &gameState->world[(unsigned int)obj->y * gameState->worldX + i];
-                                                if(*wall == 2) {
-                                                        *wall = 0;
-                                                }
+                                by = floor(obj->y + 0.5);
+                                bx = floor(obj->x + 0.5);
+                                tc = bx - 2;
+                                for(bx = bx; bx >= tc; bx--) {
+                                        if(bx < 0 || bx > (int) gameState->worldX) continue;
+                                        wall = &gameState->world[by * gameState->worldX + bx];
+                                        if(*wall == 1) {
+                                                break;
                                         }
+                                        *wall = 0;
                                 }
+
+                                by = floor(obj->y + 0.5);
+                                bx = floor(obj->x + 0.5);
+                                tc = by + 2;
+                                for(by = by; by <= tc; by++) {
+                                        if(by < 0 || by > (int) gameState->worldY) continue;
+                                        wall = &gameState->world[by * gameState->worldX + bx];
+                                        if(*wall == 1) {
+                                                break;
+                                        }
+                                        *wall = 0;
+                                }
+                                by = floor(obj->y + 0.5);
+                                bx = floor(obj->x + 0.5);
+                                tc = by - 2;
+                                for(by = by; by >= tc; by--) {
+                                        if(by < 0 || by > (int) gameState->worldY) continue;
+                                        wall = &gameState->world[by * gameState->worldX + bx];
+                                        if(*wall == 1) {
+                                                break;
+                                        }
+                                        *wall = 0;
+                                }
+
                         }
                 }
                 i++;

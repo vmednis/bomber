@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <raylib.h>
 #include <unistd.h>
@@ -29,7 +30,7 @@ void UpdateCameraBorder(struct GameState* state, int width, int height);
 
 static struct PacketCallbacks packetCallbacks = {0};
 
-int main() {
+int main(int argc, char **argv) {
         float delta;
         struct NetworkState netState = {0};
         struct GameState gameState = {0};
@@ -37,13 +38,20 @@ int main() {
 
         SelfTest();
 
+        if(argc < 4) {
+                puts("Missing arguments!");
+                puts("./bombcli ip port name");
+                return 1;
+        }
+
         InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Bomber Client");
         LoadTextures(textureAtlas);
         SetupGameState(&gameState);
         SetupCallbacks();
 
-        strcpy(netState.ip, "127.0.0.1");
-        netState.port = 3001;
+        strcpy(netState.ip, argv[1]);
+        netState.port = atoi(argv[2]);
+        strcpy(netState.reqName, argv[3]);
         SetupNetwork(&netState);
 
         while(!WindowShouldClose()) {
@@ -187,7 +195,7 @@ void SetupNetwork(struct NetworkState* netState) {
 
         /* Introduce yourself ot the server */
         pci.protoVersion = 0x00;
-        strcpy(pci.playerName, "Client");
+        strcpy(pci.playerName, netState->reqName);
         pci.playerColor = 'x';
 
         len = PacketEncode(buffer, PACKET_TYPE_CLIENT_IDENTIFY, &pci);

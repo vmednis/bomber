@@ -25,16 +25,23 @@ static void CallbackClientId(void* packet, void* data) {
         struct SourcedGameState* state = data;
         struct PacketClientId* pcid = packet;
         struct GameObject* player;
-        printf("protocol version = %u, player name = %s, player color = %c\n", pcid->protoVersion, pcid->playerName, pcid->playerColor);
 
+        /*Set personalization options on player*/
         player = &state->gameState->objects[state->playerId];
         strcpy(player->extra.player.name, pcid->playerName);
         player->extra.player.color = pcid->playerColor;
 }
 
 static void CallbackClientInput(void* packet, void* data) {
+        struct SourcedGameState* state = data;
         struct PacketClientInput* pcin = packet;
-        printf("movementX = %i, movementY = %i, action = %i\n", pcin->movementX, pcin->movementY, pcin->action);
+        struct GameObject* player;
+        float speed = 0.8;
+
+        /* Apply player inputs */
+        player = &state->gameState->objects[state->playerId];
+        player->velx = pcin->movementX / 127.0 * speed;
+        player->vely = pcin->movementY / 127.0 * speed;
 }
 
 static void CallbackClientMessage(void* packet, void* data) {
@@ -192,7 +199,6 @@ int HandleClientPackets(int clientId, struct GameState* gameState, struct Packet
 
                         len++;
 
-                        printf("Packet length = %d.\n", len);
                         if (buffer[0] == 0xff) {
                                 sourcedGameState.playerId = clientId;
                                 sourcedGameState.gameState = gameState;
@@ -410,11 +416,11 @@ int GameLoop() {
         {
                 AcceptClients(&gameState);
                 HandleIncomingPackets(&gameState);
-                UpdateGameState(&gameState, 1);
+                UpdateGameState(&gameState, 0.1);
                 UpdateClients(&gameState);
 
                 /*Should be replaced with proper deltas asap*/
-                sleep(1);
+                usleep(1000 * 100);
         }
         return 0;
 }

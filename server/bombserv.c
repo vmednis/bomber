@@ -119,7 +119,9 @@ int AcceptClients(struct GameState* gameState) {
                 else {
                         printf("Client succesfully connected!\n");
                         fcntl(clientSocket, F_SETFL, fcntl(clientSocket, F_GETFL) | O_NONBLOCK);
-                        setsockopt(clientSocket, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes));
+                        if (setsockopt(clientSocket, SOL_TCP, TCP_NODELAY, &yes, sizeof(yes)) == -1) {
+                                /* printf("ERROR setting option TCP_NODELAY to client socket = %d.\n", errno); */
+                        }
 
                         if (clientCount > MAX_CLIENTS) {
                                 psid.protoVersion = 0x00;
@@ -242,10 +244,9 @@ int UpdateClient(int clientId, struct GameState* gameState) {
         int l2;
         unsigned int i;
 
-
         fd = gameState->objects[clientId].extra.player.fd;
 
-        /* Nosuta pasauli */
+        /* Sends world */
         packWorld.sizeX = gameState->worldX;
         packWorld.sizeY = gameState->worldY;
         memcpy(packWorld.blockIDs, gameState->world, packWorld.sizeX * packWorld.sizeY);
@@ -255,7 +256,7 @@ int UpdateClient(int clientId, struct GameState* gameState) {
                 /* What happens here? Do we remove the client or something? */
         }
 
-        /* Nosuta game objects */
+        /* Sends game objects */
         i = 0;
         while (i < MAX_OBJECTS) {
                 obj = &gameState->objects[i];

@@ -1,29 +1,53 @@
 #ifndef BOMBSERV_H
 #define BOMBSERV_H
 
+#define MAX_OBJECTS 1024
+
 typedef struct server {
         int address;
         int port;
         int fd;
 } server;
 
-typedef struct client
-{
-        int clientID;
+enum GameObjectType {
+        Player = 0,
+        Bomb = 1
+};
+
+struct GameObjectPlayer {
         int fd;
         char name[32];
-        char color;
-        int inGame;
-        int readyForGame;
+        unsigned char color;
+};
+
+struct GameObjectBomb {
+        float timeToDetonation;
+};
+
+struct GameObject {
+        int active;
+        enum GameObjectType type;
         float x;
         float y;
-} client;
+        float velx;
+        float vely;
+        union {
+                struct GameObjectPlayer player;
+                struct GameObjectBomb bomb;
+        } extra;
+};
 
-typedef struct allClients
-{
-        client* client;
-        struct allClients* next;
-} allClients;
+struct GameState {
+        struct GameObject objects[MAX_OBJECTS];
+        unsigned int worldX;
+        unsigned int worldY;
+        unsigned char world[MAX_BLOCK_IDS];
+};
+
+struct SourcedGameState {
+        unsigned int playerId;
+        struct GameState* gameState;
+};
 
 /* Default game arena */
 unsigned char blocks[169] = {

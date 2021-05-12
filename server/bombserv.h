@@ -2,6 +2,7 @@
 #define BOMBSERV_H
 
 #define MAX_OBJECTS 1024
+#define MAX_SPAWNPOINTS 4
 
 typedef struct server {
         int address;
@@ -38,11 +39,18 @@ struct GameObject {
         } extra;
 };
 
+struct SpawnPoint {
+        float x;
+        float y;
+};
+
 struct GameState {
         struct GameObject objects[MAX_OBJECTS];
         unsigned int worldX;
         unsigned int worldY;
         unsigned char world[MAX_BLOCK_IDS];
+        struct SpawnPoint spawnPoints[MAX_SPAWNPOINTS];
+        unsigned int nextSpawnPoint;
 };
 
 struct SourcedGameState {
@@ -53,8 +61,8 @@ struct SourcedGameState {
 /* Default game arena */
 unsigned char blocks[169] = {
                                 1,1,1,1,1,1,1,1,1,1,1,1,1,
-                                1,0,0,2,2,2,2,2,2,2,2,2,1,
-                                1,0,1,2,1,2,1,2,1,2,1,2,1,
+                                1,0,0,2,2,2,2,2,2,2,0,0,1,
+                                1,0,1,2,1,2,1,2,1,2,1,0,1,
                                 1,2,2,2,2,2,2,2,2,2,2,2,1,
                                 1,2,1,2,1,2,1,2,1,2,1,2,1,
                                 1,2,2,2,2,2,2,2,2,2,2,2,1,
@@ -62,8 +70,8 @@ unsigned char blocks[169] = {
                                 1,2,2,2,2,2,2,2,2,2,2,2,1,
                                 1,2,1,2,1,2,1,2,1,2,1,2,1,
                                 1,2,2,2,2,2,2,2,2,2,2,2,1,
-                                1,2,1,2,1,2,1,2,1,2,1,0,1,
-                                1,2,2,2,2,2,2,2,2,2,0,0,1,
+                                1,0,1,2,1,2,1,2,1,2,1,0,1,
+                                1,0,0,2,2,2,2,2,2,2,0,0,1,
                                 1,1,1,1,1,1,1,1,1,1,1,1,1
 };
 

@@ -14,6 +14,7 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <time.h>
+#include <math.h>
 #include "../shared/packet.h"
 #include "bombserv.h"
 
@@ -140,8 +141,10 @@ int AcceptClients(struct GameState* gameState) {
                                                 obj = &gameState->objects[i];
                                                 obj->active = 1;
                                                 obj->type = Player;
-                                                obj->x = 1;
-                                                obj->y = 1;
+                                                obj->x = gameState->spawnPoints[gameState->nextSpawnPoint].x;
+                                                obj->y = gameState->spawnPoints[gameState->nextSpawnPoint].y;
+                                                gameState->nextSpawnPoint++;
+                                                gameState->nextSpawnPoint %= MAX_SPAWNPOINTS;
                                                 obj->velx = 0;
                                                 obj->vely = 0;
                                                 obj->extra.player.fd = clientSocket;
@@ -303,94 +306,7 @@ int UpdateClients(struct GameState* gameState) {
                 }
                 i++;
         }
-        /*
-        unsigned char buffer[PACKET_MAX_BUFFER];
-        int i, j, len;
-        struct PacketGameAreaInfo pgai;
-        struct PacketServerMessage psm;
-        struct PacketMovableObjects pmo;
-        struct PacketServerPlayers psp;
-        struct PacketServerPlayerInfo players[clientCount];
-        struct PacketMovableObjectInfo objects[MAX_MOVABLE_OBJECTS];
-        allClients* current = firstClient;
 
-        pgai.sizeX = 13;
-        pgai.sizeY = 13;
-        memcpy(pgai.blockIDs, blocks, sizeof(blocks));
-
-        for (i = 0; i < clientCount; i++) {
-                len = PacketEncode(buffer, PACKET_TYPE_SERVER_GAME_AREA, &pgai);
-                if (send(clientFDs[i], buffer, len, 0) < 0) {
-                        printf("ERROR sending game arena");
-                        return -1;
-                }
-                printf("Sent game arena to client %d.\n", i);
-                if (startGame == 1) {
-                        psm.messageType = 1;
-                        strcpy(psm.message, "Game starting!");
-                        len = PacketEncode(buffer, PACKET_TYPE_SERVER_MESSAGE, &psm);
-                        if (send(clientFDs[i], buffer, len, 0) < 0) {
-                                printf("ERROR sending message");
-                                return -1;
-                        }
-                        printf("Sent message to client %d.\n", i);
-
-                        psp.playerCount = clientCount;
-                        for (j = 0; j < clientCount; j++) {
-                                players[j].playerID = current->client->clientID;
-                                strcpy(players[j].playerName, current->client->name);
-                                players[j].playerColor = current->client->color;
-                                players[j].playerPoints = 0;
-                                players[j].playerLives = 3;
-                                if (current->next != NULL) {
-                                        current = current->next;
-                                }
-                                else {
-                                        current = firstClient;
-                                }
-                        }
-                        memcpy(psp.players, players, sizeof(players));
-
-                        len = PacketEncode(buffer, PACKET_TYPE_SERVER_PLAYER_INFO, &psp);
-                        if (send(clientFDs[i], buffer, len, 0) < 0) {
-                                printf("ERROR sending player info");
-                                return -1;
-                        }
-                        else {
-                                printf("Sent player info to client %d!\n", i);
-                        }
-
-=                        pmo.objectCount = clientCount;
-
-                        for (j = 0; j < clientCount; j++) {
-                                objects[j].objectType = 0;
-                                objects[j].objectID = j;
-                                if (j == 0) {
-                                        objects[j].objectX = 1.0;
-                                        objects[j].objectY = 1.0;
-                                }
-                                else if (j == 1) {
-                                        objects[j].objectX = 11.0;
-                                        objects[j].objectY = 11.0;
-                                }
-                                objects[j].movement = 0;
-                                objects[j].status = 3;
-                        }
-                        memcpy(pmo.movableObjects, objects, sizeof(objects));
-
-                        len = PacketEncode(buffer, PACKET_TYPE_MOVABLE_OBJECTS, &pmo);
-                        if (send(clientFDs[i], buffer, len, 0) < 0) {
-                                printf("ERROR sending player info");
-                                return -1;
-                        }
-                        else {
-                                printf("Sent movable object info to client %d!\n", i);
-                        }
-                }
-
-        }
-        startGame = 0;
-        */
         return 0;
 }
 
@@ -399,23 +315,96 @@ static void InitGameState(struct GameState* gameState) {
         gameState->worldX = 13;
         gameState->worldY = 13;
         memcpy(gameState->world, blocks, gameState->worldX * gameState->worldY);
+
+        gameState->spawnPoints[0] = (struct SpawnPoint) {1.0,  1.0};
+        gameState->spawnPoints[1] = (struct SpawnPoint) {11.0, 11.0};
+        gameState->spawnPoints[2] = (struct SpawnPoint) {1.0,  11.0};
+        gameState->spawnPoints[3] = (struct SpawnPoint) {11.0, 1.0};
+        gameState->nextSpawnPoint = 0;
+}
+
+static int CheckCollision(struct GameState* gameState, float x, float y) {
+        unsigned char rx, ry;
+        unsigned char wall;
+
+        rx = x;
+        ry = y;
+        wall = gameState->world[rx * gameState->worldX + ry];
+
+        if(wall == 1 || wall == 2) {
+                /* Solid wall */
+                return 1;
+        } else {
+                return 0;
+        }
 }
 
 static void UpdateGameState(struct GameState* gameState, float delta) {
         struct GameObject* obj;
         unsigned int i = 0;
+        float tx, ty;
+        float px, py;
 
         /* Apply velocity*/
         while(i < MAX_OBJECTS) {
                 obj = &gameState->objects[i];
                 if(obj->active && obj->type == Player) {
                         /* While bombs can have velocity too currently ignore it to reduce complexity*/
-                        obj->x += obj->velx * delta;
-                        obj->y += obj->vely * delta;
+                        tx = obj->x + obj->velx * delta;
+                        ty = obj->y + obj->vely * delta;
 
-                        /*Todo check colision with walls, easiest way if will be intersecting wall after this don't allow the movement*/
-                        /*More advanced could do some sliding techniques, but yeah nah*/
-                        /*Also better to keep players bounding box a bit smaller than 1x1 to make turning corners easier*/
+                        /* Check if this will cause a collision with a wall */
+                        /* Player left side, top side */
+                        px = floor(tx + 0.1);
+                        py = floor(obj->y);
+                        if(CheckCollision(gameState, px, py)) {
+                                tx = px + 1;
+                        }
+                        px = floor(obj->x);
+                        py = floor(ty + 0.1);
+                        if(CheckCollision(gameState, px, py)) {
+                                ty = py + 1;
+                        }
+                        /* Player right, player bottom */
+                        px = floor(tx + 0.9);
+                        py = floor(obj->y);
+                        if(CheckCollision(gameState, px, py)) {
+                                tx = px - 1;
+                        }
+                        px = floor(obj->x);
+                        py = floor(ty + 0.9);
+                        if(CheckCollision(gameState, px, py)) {
+                                ty = py - 1;
+                        }
+
+                        /* Corners */
+                        px = floor(tx + 0.1);
+                        py = floor(ty + 0.1);
+                        if(CheckCollision(gameState, px, py)) {
+                                tx = px + 1;
+                                ty = px + 1;
+                        }
+                        px = floor(tx + 0.9);
+                        py = floor(ty + 0.1);
+                        if(CheckCollision(gameState, px, py)) {
+                                tx = px - 1;
+                                ty = px + 1;
+                        }
+                        px = floor(tx + 0.9);
+                        py = floor(ty + 0.9);
+                        if(CheckCollision(gameState, px, py)) {
+                                tx = px - 1;
+                                ty = py - 1;
+                        }
+                        px = floor(tx + 0.1);
+                        py = floor(ty + 0.9);
+                        if(CheckCollision(gameState, px, py)) {
+                                tx = px + 1;
+                                ty = py - 1;
+                        }
+
+                        obj->x = tx;
+                        obj->y = ty;
                 }
                 i++;
         }

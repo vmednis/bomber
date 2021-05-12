@@ -20,10 +20,12 @@ struct GameObjectPlayer {
         char name[32];
         unsigned char color;
         int toBeAccepted;
+        int bombsRemaining;
 };
 
 struct GameObjectBomb {
         float timeToDetonation;
+        unsigned int owner;
 };
 
 struct GameObject {

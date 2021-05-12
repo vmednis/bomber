@@ -38,12 +38,32 @@ static void CallbackClientInput(void* packet, void* data) {
         struct SourcedGameState* state = data;
         struct PacketClientInput* pcin = packet;
         struct GameObject* player;
+        struct GameObject* bomb;
         float speed = 1.6;
+        unsigned int i = 0;
 
         /* Apply player inputs */
         player = &state->gameState->objects[state->playerId];
         player->velx = pcin->movementX / 127.0 * speed;
         player->vely = pcin->movementY / 127.0 * speed;
+
+        /* Try placing a bomb */
+        if(pcin->action && player->extra.player.bombsRemaining) {
+                while(i < MAX_OBJECTS) {
+                        bomb = &state->gameState->objects[i];
+                        if(!bomb->active) {
+                                bomb->active = 1;
+                                bomb->type = Bomb;
+                                bomb->x = round(player->x);
+                                bomb->y = round(player->y);
+                                bomb->extra.bomb.owner = state->playerId;
+                                bomb->extra.bomb.timeToDetonation = 3;
+                                break;
+                        }
+                        i++;
+                }
+                player->extra.player.bombsRemaining--;
+        }
 }
 
 static void CallbackClientMessage(void* packet, void* data) {
@@ -148,6 +168,7 @@ int AcceptClients(struct GameState* gameState) {
                                                 obj->velx = 0;
                                                 obj->vely = 0;
                                                 obj->extra.player.fd = clientSocket;
+                                                obj->extra.player.bombsRemaining = 1;
                                                 return 1;
                                         }
                                         i++;
@@ -327,8 +348,8 @@ static int CheckCollision(struct GameState* gameState, float x, float y) {
         unsigned char rx, ry;
         unsigned char wall;
 
-        rx = x;
-        ry = y;
+        rx = y;
+        ry = x;
         wall = gameState->world[rx * gameState->worldX + ry];
 
         if(wall == 1 || wall == 2) {
@@ -341,6 +362,7 @@ static int CheckCollision(struct GameState* gameState, float x, float y) {
 
 static void UpdateGameState(struct GameState* gameState, float delta) {
         struct GameObject* obj;
+        unsigned char *wall;
         unsigned int i = 0;
         float tx, ty;
         float px, py;
@@ -405,6 +427,36 @@ static void UpdateGameState(struct GameState* gameState, float delta) {
 
                         obj->x = tx;
                         obj->y = ty;
+                } else if(obj->active && obj->type == Bomb) {
+                        /* Decrease bomb timer and explode if it's time */
+                        obj->extra.bomb.timeToDetonation -= delta;
+                        if(obj->extra.bomb.timeToDetonation < 0) {
+                                /* BOOM */
+                                obj->active = 0;
+                                if(gameState->objects[obj->extra.bomb.owner].active) {
+                                        /* Give a bomb back to the player */
+                                        gameState->objects[obj->extra.bomb.owner].extra.player.bombsRemaining++;
+                                }
+
+                                /*Vert destruction*/
+                                for(i = obj->y - 0.5 ; i < obj->y + 1.5; i++) {
+                                        if(i > 0 && i < gameState->worldY) {
+                                                wall = &gameState->world[i * gameState->worldX + (unsigned int)obj->x];
+                                                if(*wall == 2) {
+                                                        *wall = 0;
+                                                }
+                                        }
+                                }
+                                /*Horz destruction*/
+                                for(i = obj->x - 0.5; i < obj->x + 1.5; i++) {
+                                        if(i > 0 && i < gameState->worldX) {
+                                                wall = &gameState->world[(unsigned int)obj->y * gameState->worldX + i];
+                                                if(*wall == 2) {
+                                                        *wall = 0;
+                                                }
+                                        }
+                                }
+                        }
                 }
                 i++;
         }

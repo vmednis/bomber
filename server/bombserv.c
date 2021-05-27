@@ -283,7 +283,7 @@ int UpdateClient(int clientId, struct GameState* gameState) {
                         /* What happens here? Do we remove the client or something? */
                 }
         }
-  
+
         /* Sends world */
         packWorld.sizeX = gameState->worldX;
         packWorld.sizeY = gameState->worldY;
@@ -345,12 +345,16 @@ static void InitGameState(struct GameState* gameState) {
         gameState->nextSpawnPoint = 0;
 }
 
+
 static int CheckCollision(struct GameState* gameState, float x, float y) {
         unsigned char rx, ry;
         unsigned char wall;
 
+        if(x < 0 || x > gameState->worldX) return 0;
+        if(y < 0 || y > gameState->worldY) return 0;
         rx = y;
         ry = x;
+
         wall = gameState->world[rx * gameState->worldX + ry];
 
         if(wall == 1 || wall == 2) {
@@ -361,12 +365,35 @@ static int CheckCollision(struct GameState* gameState, float x, float y) {
         }
 }
 
+struct ColVector {
+        float x;
+        float y;
+};
+
+static struct ColVector FindCollision(struct GameState* gameState, float x, float y) {
+        struct ColVector cv = {0, 0};
+        float lx, rx, ty, by;
+        int col = 0;
+
+        lx = x + 0.05;
+        rx = x + 0.95;
+        ty = y + 0.05;
+        by = y + 0.95;
+
+        if(CheckCollision(gameState, lx, ty)) {cv.x -= 1; cv.y -= 1;}
+        if(CheckCollision(gameState, rx, ty)) {cv.x += 1; cv.y -= 1;}
+        if(CheckCollision(gameState, rx, by)) {cv.x += 1; cv.y += 1;}
+        if(CheckCollision(gameState, lx, by)) {cv.x -= 1; cv.y += 1;}
+
+        return cv;
+}
+
 static void UpdateGameState(struct GameState* gameState, float delta) {
         struct GameObject* obj;
         unsigned char *wall;
+        struct ColVector cv;
         unsigned int i = 0;
-        float tx, ty;
-        float px, py;
+        float tx, ty, dx, dy;
         int bx, by, tc;
 
         /* Apply velocity*/
@@ -376,59 +403,16 @@ static void UpdateGameState(struct GameState* gameState, float delta) {
                         /* While bombs can have velocity too currently ignore it to reduce complexity*/
                         tx = obj->x + obj->velx * delta;
                         ty = obj->y + obj->vely * delta;
+                        cv = FindCollision(gameState, tx, ty);
 
-                        /* Check if this will cause a collision with a wall */
-                        /* Player left side, top side */
-                        px = floor(tx + 0.1);
-                        py = floor(obj->y);
-                        if(CheckCollision(gameState, px, py)) {
-                                tx = px + 1;
-                        }
-                        px = floor(obj->x);
-                        py = floor(ty + 0.1);
-                        if(CheckCollision(gameState, px, py)) {
-                                ty = py + 1;
-                        }
-                        /* Player right, player bottom */
-                        px = floor(tx + 0.9);
-                        py = floor(obj->y);
-                        if(CheckCollision(gameState, px, py)) {
-                                tx = px - 1;
-                        }
-                        px = floor(obj->x);
-                        py = floor(ty + 0.9);
-                        if(CheckCollision(gameState, px, py)) {
-                                ty = py - 1;
-                        }
-
-                        /* Corners */
-                        px = floor(tx + 0.1);
-                        py = floor(ty + 0.1);
-                        if(CheckCollision(gameState, px, py)) {
-                                tx = px + 1;
-                                ty = px + 1;
-                        }
-                        px = floor(tx + 0.9);
-                        py = floor(ty + 0.1);
-                        if(CheckCollision(gameState, px, py)) {
-                                tx = px - 1;
-                                ty = px + 1;
-                        }
-                        px = floor(tx + 0.9);
-                        py = floor(ty + 0.9);
-                        if(CheckCollision(gameState, px, py)) {
-                                tx = px - 1;
-                                ty = py - 1;
-                        }
-                        px = floor(tx + 0.1);
-                        py = floor(ty + 0.9);
-                        if(CheckCollision(gameState, px, py)) {
-                                tx = px + 1;
-                                ty = py - 1;
-                        }
+                        if(obj->velx > 0 && cv.x > 0) tx = floor(tx);
+                        if(obj->velx < 0 && cv.x < 0) tx = floor(tx + 1);
+                        if(obj->vely > 0 && cv.y > 0) ty = floor(ty);
+                        if(obj->vely < 0 && cv.y < 0) ty = floor(ty + 1);
 
                         obj->x = tx;
                         obj->y = ty;
+
                 } else if(obj->active && obj->type == Bomb) {
                         /* Decrease bomb timer and explode if it's time */
                         obj->extra.bomb.timeToDetonation -= delta;

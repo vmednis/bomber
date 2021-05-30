@@ -346,12 +346,12 @@ static void InitGameState(struct GameState* gameState) {
 }
 
 
-static int CheckCollision(struct GameState* gameState, float x, float y) {
+static int IsWallCollidable(struct GameState* gameState, float x, float y) {
         unsigned char rx, ry;
         unsigned char wall;
 
-        if(x < 0 || x > gameState->worldX) return 0;
-        if(y < 0 || y > gameState->worldY) return 0;
+        if(x < 0 || x + 1 > gameState->worldX) return 0;
+        if(y < 0 || y + 1 > gameState->worldY) return 0;
         rx = y;
         ry = x;
 
@@ -365,35 +365,78 @@ static int CheckCollision(struct GameState* gameState, float x, float y) {
         }
 }
 
-struct ColVector {
+static float fclamp(float f, float from, float to) {
+        if(f < from) {
+                return from;
+        } else if(f > to) {
+                return to;
+        }
+        return f;
+}
+
+typedef struct Vec2 {
         float x;
         float y;
-};
+} Vec2;
 
-static struct ColVector FindCollision(struct GameState* gameState, float x, float y) {
-        struct ColVector cv = {0, 0};
+static float MaxMovement(Vec2 opos, Vec2 osize, Vec2 omov, Vec2 wpos, Vec2 wsize) {
+        float distx, disty, dist;
+
+        /* Find x max movement */
+        distx = 1;
+        if(omov.x > 0) {
+                distx = fabs(wpos.x - (opos.x + osize.x)) / omov.x;
+        } else if(omov.x < 0) {
+                distx = fabs((wpos.x + wsize.x) - opos.x) / (-1 * omov.x);
+        }
+
+        /* Find y max movement*/
+        disty = 1;
+        if(omov.y > 0) {
+                disty = fabs(wpos.y - (opos.y + osize.y)) / omov.y;
+        } else if(omov.y < 0) {
+                disty = fabs((wpos.y + wsize.y) - opos.y) / (-1 * omov.y);
+        }
+
+
+        dist = distx < disty ? distx : disty;
+        return fclamp(dist, 0, 1);
+}
+
+static float CheckCollision(struct GameState * state, Vec2 pos, Vec2 mov) {
+        float distance = 1;
         float lx, rx, ty, by;
-        int col = 0;
+        float tmp;
 
-        lx = x + 0.05;
-        rx = x + 0.95;
-        ty = y + 0.05;
-        by = y + 0.95;
+        lx = floor(pos.x + mov.x + 0.01);
+        rx = floor(pos.x + mov.x + 0.99);
+        ty = floor(pos.y + mov.y + 0.01);
+        by = floor(pos.y + mov.y + 0.99);
 
-        if(CheckCollision(gameState, lx, ty)) {cv.x -= 1; cv.y -= 1;}
-        if(CheckCollision(gameState, rx, ty)) {cv.x += 1; cv.y -= 1;}
-        if(CheckCollision(gameState, rx, by)) {cv.x += 1; cv.y += 1;}
-        if(CheckCollision(gameState, lx, by)) {cv.x -= 1; cv.y += 1;}
+        tmp = 1;
+        if(IsWallCollidable(state, lx, ty)) tmp = MaxMovement(pos, (Vec2) {1, 1}, mov, (Vec2) {lx, ty}, (Vec2) {1, 1});
+        if(tmp < distance) distance = tmp;
 
-        return cv;
+        tmp = 1;
+        if(IsWallCollidable(state, rx, ty)) tmp = MaxMovement(pos, (Vec2) {1, 1}, mov, (Vec2) {rx, ty}, (Vec2) {1, 1});
+        if(tmp < distance) distance = tmp;
+
+        tmp = 1;
+        if(IsWallCollidable(state, rx, by)) tmp = MaxMovement(pos, (Vec2) {1, 1}, mov, (Vec2) {rx, by}, (Vec2) {1, 1});
+        if(tmp < distance) distance = tmp;
+
+        tmp = 1;
+        if(IsWallCollidable(state, lx, by)) tmp = MaxMovement(pos, (Vec2) {1, 1}, mov, (Vec2) {lx, by}, (Vec2) {1, 1});
+        if(tmp < distance) distance = tmp;
+
+        return distance;
 }
 
 static void UpdateGameState(struct GameState* gameState, float delta) {
         struct GameObject* obj;
         unsigned char *wall;
-        struct ColVector cv;
         unsigned int i = 0;
-        float tx, ty, dx, dy;
+        float dx, dy, dist;
         int bx, by, tc;
 
         /* Apply velocity*/
@@ -401,17 +444,13 @@ static void UpdateGameState(struct GameState* gameState, float delta) {
                 obj = &gameState->objects[i];
                 if(obj->active && obj->type == Player) {
                         /* While bombs can have velocity too currently ignore it to reduce complexity*/
-                        tx = obj->x + obj->velx * delta;
-                        ty = obj->y + obj->vely * delta;
-                        cv = FindCollision(gameState, tx, ty);
+                        dx = obj->velx * delta;
+                        dy = obj->vely * delta;
 
-                        if(obj->velx > 0 && cv.x > 0) tx = floor(tx);
-                        if(obj->velx < 0 && cv.x < 0) tx = floor(tx + 1);
-                        if(obj->vely > 0 && cv.y > 0) ty = floor(ty);
-                        if(obj->vely < 0 && cv.y < 0) ty = floor(ty + 1);
+                        dist = CheckCollision(gameState, (Vec2) {obj->x, obj->y}, (Vec2) {dx, dy});
 
-                        obj->x = tx;
-                        obj->y = ty;
+                        obj->x += dx * dist;
+                        obj->y += dy * dist;
 
                 } else if(obj->active && obj->type == Bomb) {
                         /* Decrease bomb timer and explode if it's time */

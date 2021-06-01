@@ -22,6 +22,8 @@
 void LoadTextures(Texture2D* atlas);
 void SetupGameState(struct GameState * gameState);
 void SetupCallbacks();
+void UpdateTimers(struct GameState * gameState, float delta);
+void CalcInterpolation(struct GameState * gameState);
 void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, float delta);
 void SetupNetwork(struct NetworkState* netState);
 void ProcessNetwork(struct GameState* gameState, struct NetworkState* netState);
@@ -58,9 +60,10 @@ int main(int argc, char **argv) {
                 delta = GetFrameTime();
 
                 ProcessInput(&gameState, &netState);
+                UpdateTimers(&gameState, delta);
                 ProcessNetwork(&gameState, &netState);
+                CalcInterpolation(&gameState);
                 UpdateCameraBorder(&gameState, SCREEN_WIDTH, SCREEN_HEIGHT);
-                gameState.timer += delta;
 
                 BeginDrawing();
                         DrawFrame(&gameState, textureAtlas, delta);
@@ -85,6 +88,7 @@ void SetupGameState(struct GameState * gameState) {
         gameState->objects = HashmapNew();
         gameState->players = HashmapNew();
         gameState->camera.zoom = 1.0f;
+        gameState->objUpdateLen = 0.0f;
 }
 
 void SetupCallbacks() {
@@ -141,6 +145,11 @@ Color CalculatePlayerColor(unsigned int color) {
         return (Color) {(unsigned char) R, (unsigned char) G, (unsigned char) B, 255};
 }
 
+void UpdateTimers(struct GameState * gameState, float delta) {
+        gameState->timer += delta;
+        gameState->timerObjUpdate += delta;
+}
+
 void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, UNUSED float delta) {
         int x, y;
         unsigned char tile;
@@ -166,10 +175,10 @@ void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, UNUSED floa
         while((curobj = HashmapNext(iter)) != NULL) {
                 switch(curobj->type) {
                 case Player:
-                        DrawTexture(textureAtlas[TEXTURE_PLAYER_FRONT], curobj->x * 64.0, curobj->y * 64.0, CalculatePlayerColor(curobj->tint));
+                        DrawTexture(textureAtlas[TEXTURE_PLAYER_FRONT], curobj->ix * 64.0, curobj->iy * 64.0, CalculatePlayerColor(curobj->tint));
                         break;
                 case Bomb:
-                        DrawTexture(textureAtlas[TEXTURE_BOMB], curobj->x * 64.0, curobj->y * 64.0, WHITE);
+                        DrawTexture(textureAtlas[TEXTURE_BOMB], curobj->ix * 64.0, curobj->iy * 64.0, WHITE);
                         break;
                 }
         }
@@ -254,12 +263,27 @@ void ProcessNetwork(struct GameState* gameState, struct NetworkState* netState) 
         }
 }
 
+void CalcInterpolation(struct GameState * gameState) {
+        struct HashmapIterator* iter;
+        struct GameObject *curobj;
+        float prog;
+
+        prog = gameState->timerObjUpdate / gameState->objUpdateLen;
+        prog = prog > 1.0 ? 1.0 : prog;
+
+        iter = HashmapIterator(gameState->objects);
+        while((curobj = HashmapNext(iter)) != NULL) {
+                curobj->ix = curobj->prevx + (curobj->x - curobj->prevx) * prog;
+                curobj->iy = curobj->prevy + (curobj->y - curobj->prevy) * prog;
+        }
+}
+
 void ProcessInput(struct GameState* gameState, struct NetworkState* netState) {
         struct PacketClientInput input = {0};
         unsigned char buffer[PACKET_MAX_BUFFER];
         int len = 0;
 
-        if(gameState->timer > (1.0 / 5)) {
+        if(gameState->timer > (1.0 / 20)) {
                 if(IsKeyDown(KEY_RIGHT)) input.movementX += 127;
                 if(IsKeyDown(KEY_LEFT))  input.movementX -= 127;
                 if(IsKeyDown(KEY_UP))    input.movementY -= 127;

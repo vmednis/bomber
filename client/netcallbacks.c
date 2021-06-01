@@ -55,6 +55,8 @@ void CallbackMovableObj(void * packet, void * passthrough) {
                 player = HashmapGet(gameState->players, info.objectID);
                 obj->id = info.objectID;
                 obj->type = info.objectType;
+                obj->prevx = obj->x;
+                obj->prevy = obj->y;
                 obj->x = info.objectX;
                 obj->y = info.objectY;
                 if(player) obj->tint = player->color;
@@ -77,6 +79,10 @@ void CallbackMovableObj(void * packet, void * passthrough) {
                 HashmapRemove(gameState->objects, objsToRemove[i]);
                 i++;
         }
+
+        /* Update game obj interpolation timers */
+        gameState->objUpdateLen = gameState->timerObjUpdate;
+        gameState->timerObjUpdate = 0.00;
 }
 
 void CallbackMessage(void * packet, void * passthrough) {

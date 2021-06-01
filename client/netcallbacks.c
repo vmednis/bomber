@@ -50,6 +50,8 @@ void CallbackMovableObj(void * packet, void * passthrough) {
                 if(obj == NULL) {
                         obj = malloc(sizeof(struct GameObject));
                         HashmapPut(gameState->objects, info.objectID, obj);
+                        obj->x = info.objectX;
+                        obj->y = info.objectY;
                 }
 
                 player = HashmapGet(gameState->players, info.objectID);

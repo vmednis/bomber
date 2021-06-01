@@ -15,6 +15,10 @@ struct GameObject {
         unsigned int id;
         float x;
         float y;
+        float ix;
+        float iy;
+        float prevx;
+        float prevy;
         enum GameObjectType type;
         unsigned char tint;
         int remove;
@@ -37,6 +41,8 @@ struct GameState {
         Camera2D camera;
 
         int pingrequested;
+        float objUpdateLen;
+        float timerObjUpdate;
         float timer;
 };
 

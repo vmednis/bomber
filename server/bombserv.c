@@ -408,10 +408,10 @@ static float CheckCollision(struct GameState * state, Vec2 pos, Vec2 mov) {
         float lx, rx, ty, by;
         float tmp;
 
-        lx = floor(pos.x + mov.x + 0.01);
-        rx = floor(pos.x + mov.x + 0.99);
-        ty = floor(pos.y + mov.y + 0.01);
-        by = floor(pos.y + mov.y + 0.99);
+        lx = floor(pos.x + mov.x + 0.05);
+        rx = floor(pos.x + mov.x + 0.95);
+        ty = floor(pos.y + mov.y + 0.05);
+        by = floor(pos.y + mov.y + 0.95);
 
         tmp = 1;
         if(IsWallCollidable(state, lx, ty)) tmp = MaxMovement(pos, (Vec2) {1, 1}, mov, (Vec2) {lx, ty}, (Vec2) {1, 1});

@@ -75,19 +75,19 @@ int main(int argc, char **argv) {
 }
 
 void LoadTextures(Texture2D* atlas) {
-        atlas[TEXTURE_WALL_SOLID] = LoadTexture("assets/wall_solid.png");
-        atlas[TEXTURE_WALL_BREAKABLE] = LoadTexture("assets/wall_breakable.png");
-        atlas[TEXTURE_PLAYER_FRONT] = LoadTexture("assets/player_front.png");
-        atlas[TEXTURE_PLAYER_LEFT] = LoadTexture("assets/player_left.png");
-        atlas[TEXTURE_PLAYER_RIGHT] = LoadTexture("assets/player_right.png");
-        atlas[TEXTURE_PLAYER_BACK] = LoadTexture("assets/player_back.png");
-        atlas[TEXTURE_BOMB] = LoadTexture("assets/bomb.png");
+        atlas[TEXTURE_WALL_SOLID] = LoadTexture("assets/wall_solid_new.png");
+        atlas[TEXTURE_WALL_BREAKABLE] = LoadTexture("assets/wall_breakable_new.png");
+        atlas[TEXTURE_PLAYER_FRONT] = LoadTexture("assets/player_temp.png");
+        atlas[TEXTURE_PLAYER_LEFT] = LoadTexture("assets/player_temp.png");
+        atlas[TEXTURE_PLAYER_RIGHT] = LoadTexture("assets/player_temp.png");
+        atlas[TEXTURE_PLAYER_BACK] = LoadTexture("assets/player_temp.png");
+        atlas[TEXTURE_BOMB] = LoadTexture("assets/bomb_new.png");
 }
 
 void SetupGameState(struct GameState * gameState) {
         gameState->objects = HashmapNew();
         gameState->players = HashmapNew();
-        gameState->camera.zoom = 1.0f;
+        gameState->camera.zoom = 4.0f;
         gameState->objUpdateLen = 0.0f;
 }
 
@@ -165,7 +165,7 @@ void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, UNUSED floa
                 for(x = 0; x < gameState->worldX; x++) {
                         tile = gameState->world[y * gameState->worldX + x];
                         if(tile != 0) {
-                                DrawTexture(textureAtlas[tile], x * 64, y * 64, WHITE);
+                                DrawTexture(textureAtlas[tile], x * 16, y * 16, WHITE);
                         }
                 }
         }
@@ -175,10 +175,10 @@ void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, UNUSED floa
         while((curobj = HashmapNext(iter)) != NULL) {
                 switch(curobj->type) {
                 case Player:
-                        DrawTexture(textureAtlas[TEXTURE_PLAYER_FRONT], curobj->ix * 64.0, curobj->iy * 64.0, CalculatePlayerColor(curobj->tint));
+                        DrawTexture(textureAtlas[TEXTURE_PLAYER_FRONT], curobj->ix * 16.0, curobj->iy * 16.0, WHITE);
                         break;
                 case Bomb:
-                        DrawTexture(textureAtlas[TEXTURE_BOMB], curobj->ix * 64.0, curobj->iy * 64.0, WHITE);
+                        DrawTexture(textureAtlas[TEXTURE_BOMB], curobj->ix * 16.0, curobj->iy * 16.0, WHITE);
                         break;
                 }
         }
@@ -320,8 +320,8 @@ void UpdateCameraBorder(struct GameState* state, int width, int height)
         Vector2 borderWorldMax = GetScreenToWorld2D((Vector2){ (1 + border.x)*0.5f*width, (1 + border.y)*0.5f*height }, *camera);
         camera->offset = (Vector2){ (1 - border.x)*0.5f * width, (1 - border.y)*0.5f*height };
 
-        if (player->x * 64 < borderWorldMin.x) camera->target.x = player->ix * 64;
-        if (player->y * 64 < borderWorldMin.y) camera->target.y = player->iy * 64;
-        if (player->x * 64 > borderWorldMax.x) camera->target.x = borderWorldMin.x + (player->ix * 64 - borderWorldMax.x);
-        if (player->y * 64 > borderWorldMax.y) camera->target.y = borderWorldMin.y + (player->iy * 64 - borderWorldMax.y);
+        if (player->x * 16 < borderWorldMin.x) camera->target.x = player->ix * 16;
+        if (player->y * 16 < borderWorldMin.y) camera->target.y = player->iy * 16;
+        if (player->x * 16 > borderWorldMax.x) camera->target.x = borderWorldMin.x + (player->ix * 16 - borderWorldMax.x);
+        if (player->y * 16 > borderWorldMax.y) camera->target.y = borderWorldMin.y + (player->iy * 16 - borderWorldMax.y);
 }

@@ -4,7 +4,7 @@ CFLAGS = -std=c99 -Wall -Wextra -g -lraylib -lm
 ODIR = obj
 SHROBJS = shared/packet.o
 CLIOBJS = $(SHROBJS) client/bombcli.o client/tests.o client/netcallbacks.o client/hashmap.o
-SRVOBJS = $(SHROBJS) server/bombserv.o
+SRVOBJS = $(SHROBJS) server/bombserv.o server/vec2.o server/collision.o
 
 all: bombcli bombsrv
 

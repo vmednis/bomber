@@ -82,6 +82,7 @@ void LoadTextures(Texture2D* atlas) {
         atlas[TEXTURE_PLAYER_RIGHT] = LoadTexture("assets/player_temp.png");
         atlas[TEXTURE_PLAYER_BACK] = LoadTexture("assets/player_temp.png");
         atlas[TEXTURE_BOMB] = LoadTexture("assets/bomb_new.png");
+        atlas[TEXTURE_EXPLOSION] = LoadTexture("assets/explosion.png");
 }
 
 void SetupGameState(struct GameState * gameState) {
@@ -151,7 +152,7 @@ void UpdateTimers(struct GameState * gameState, float delta) {
 }
 
 void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, UNUSED float delta) {
-        int x, y;
+        int x, y, tex;
         unsigned char tile;
         struct HashmapIterator* iter;
         struct GameObject* curobj;
@@ -175,12 +176,16 @@ void DrawFrame(struct GameState* gameState, Texture2D* textureAtlas, UNUSED floa
         while((curobj = HashmapNext(iter)) != NULL) {
                 switch(curobj->type) {
                 case Player:
-                        DrawTexture(textureAtlas[TEXTURE_PLAYER_FRONT], curobj->ix * 16.0, curobj->iy * 16.0, WHITE);
+                        tex = TEXTURE_PLAYER_FRONT;
                         break;
                 case Bomb:
-                        DrawTexture(textureAtlas[TEXTURE_BOMB], curobj->ix * 16.0, curobj->iy * 16.0, WHITE);
+                        tex = TEXTURE_BOMB;
+                        break;
+                case Explosion:
+                        tex = TEXTURE_EXPLOSION;
                         break;
                 }
+                DrawTexture(textureAtlas[tex], curobj->ix * 16.0, curobj->iy * 16.0, WHITE);
         }
 
         EndMode2D();

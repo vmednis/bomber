@@ -398,6 +398,54 @@ static Vec2 CheckCollision(struct GameState * state, Vec2 pos) {
         return maxcor;
 }
 
+static int CreateExplosion(struct GameState* gameState, float x, float y, enum ExplosionDirection direction, unsigned int power) {
+        struct GameObject* obj;
+        int i, rx, ry;
+
+        /* Shouldn't create if it's going to be solid wall also no explosions out of bounds */
+        if(x < 0 || x + 1 > gameState->worldX) return -1;
+        if(y < 0 || y + 1 > gameState->worldY) return -1;
+        rx = y;
+        ry = x;
+        if(gameState->world[rx * gameState->worldX + ry] == 1) return -1;
+
+        /* Create new object */
+        for(i = 0; i < MAX_OBJECTS; i++) {
+                obj = &gameState->objects[i];
+                if(!obj->active) {
+                        obj->active = 1;
+                        obj->type = Explosion;
+                        obj->x = x;
+                        obj->y = y;
+                        obj->velx = 0;
+                        obj->vely = 0;
+
+                        obj->extra.explosion.clearedArea = 0;
+                        obj->extra.explosion.direction = direction;
+                        obj->extra.explosion.power = power;
+                        obj->extra.explosion.timerDespawn = OBJECT_EXPLOSION_DESPAWN + OBJECT_EXPLOSION_NEXT * power;
+                        obj->extra.explosion.timerNext = OBJECT_EXPLOSION_NEXT;
+
+                        return i;
+                }
+        }
+
+        return -1;
+}
+
+static void ExplosionClearArea(struct GameState* gameState, float x, float y) {
+        int rx, ry;
+
+        if(x < 0 || x + 1 > gameState->worldX) return;
+        if(y < 0 || y + 1 > gameState->worldY) return;
+        rx = y;
+        ry = x;
+        if(gameState->world[rx * gameState->worldX + ry] == 2) {
+                gameState->world[rx * gameState->worldX + ry] = 0;
+        }
+
+}
+
 static void UpdateGameState(struct GameState* gameState, float delta) {
         struct GameObject* obj;
         unsigned char *wall;
@@ -430,55 +478,42 @@ static void UpdateGameState(struct GameState* gameState, float delta) {
                                         /* Give a bomb back to the player */
                                         gameState->objects[obj->extra.bomb.owner].extra.player.bombsRemaining++;
                                 }
-
-                                /* Destruction */
-                                by = floor(obj->y + 0.5);
-                                bx = floor(obj->x + 0.5);
-                                tc = bx + 2;
-                                for(bx = bx; bx <= tc; bx++) {
-                                        if(bx < 0 || bx > (int) gameState->worldX) continue;
-                                        wall = &gameState->world[by * gameState->worldX + bx];
-                                        if(*wall == 1) {
-                                                break;
-                                        }
-                                        *wall = 0;
-                                }
-                                by = floor(obj->y + 0.5);
-                                bx = floor(obj->x + 0.5);
-                                tc = bx - 2;
-                                for(bx = bx; bx >= tc; bx--) {
-                                        if(bx < 0 || bx > (int) gameState->worldX) continue;
-                                        wall = &gameState->world[by * gameState->worldX + bx];
-                                        if(*wall == 1) {
-                                                break;
-                                        }
-                                        *wall = 0;
-                                }
-
-                                by = floor(obj->y + 0.5);
-                                bx = floor(obj->x + 0.5);
-                                tc = by + 2;
-                                for(by = by; by <= tc; by++) {
-                                        if(by < 0 || by > (int) gameState->worldY) continue;
-                                        wall = &gameState->world[by * gameState->worldX + bx];
-                                        if(*wall == 1) {
-                                                break;
-                                        }
-                                        *wall = 0;
-                                }
-                                by = floor(obj->y + 0.5);
-                                bx = floor(obj->x + 0.5);
-                                tc = by - 2;
-                                for(by = by; by >= tc; by--) {
-                                        if(by < 0 || by > (int) gameState->worldY) continue;
-                                        wall = &gameState->world[by * gameState->worldX + bx];
-                                        if(*wall == 1) {
-                                                break;
-                                        }
-                                        *wall = 0;
-                                }
-
+                                CreateExplosion(gameState, obj->x, obj->y, ALL, 2);
                         }
+                } else if(obj->active && obj->type == Explosion) {
+                        /* Destroy boxes */
+                        if(obj->extra.explosion.clearedArea == 0) {
+                                ExplosionClearArea(gameState, obj->x, obj->y);
+                                obj->extra.explosion.clearedArea = 1;
+                        }
+
+                        /* Spread if needed */
+                        if(obj->extra.explosion.timerNext < 0 && obj->extra.explosion.power > 0) {
+                                if(obj->extra.explosion.direction == UP || obj->extra.explosion.direction == ALL) {
+                                        CreateExplosion(gameState, obj->x, obj->y - 1, UP, obj->extra.explosion.power - 1);
+                                }
+                                if(obj->extra.explosion.direction == RIGHT || obj->extra.explosion.direction == ALL) {
+                                        CreateExplosion(gameState, obj->x + 1, obj->y, RIGHT, obj->extra.explosion.power - 1);
+                                }
+                                if(obj->extra.explosion.direction == DOWN || obj->extra.explosion.direction == ALL) {
+                                        CreateExplosion(gameState, obj->x, obj->y + 1, DOWN, obj->extra.explosion.power - 1);
+                                }
+                                if(obj->extra.explosion.direction == LEFT || obj->extra.explosion.direction == ALL) {
+                                        CreateExplosion(gameState, obj->x - 1, obj->y, LEFT, obj->extra.explosion.power - 1);
+                                }
+
+                                obj->extra.explosion.timerNext = 10000;
+                        }
+
+                        /* Despawn if time has come */
+                        if(obj->extra.explosion.timerDespawn < 0) {
+                                obj->active = 0;
+                                break;
+                        }
+
+                        /* Decrease the timers */
+                        obj->extra.explosion.timerDespawn -= delta;
+                        obj->extra.explosion.timerNext -= delta;
                 }
                 i++;
         }

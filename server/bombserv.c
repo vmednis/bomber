@@ -443,7 +443,6 @@ static void ExplosionClearArea(struct GameState* gameState, float x, float y) {
         if(gameState->world[rx * gameState->worldX + ry] == 2) {
                 gameState->world[rx * gameState->worldX + ry] = 0;
         }
-
 }
 
 static void UpdateGameState(struct GameState* gameState, float delta) {

@@ -12,7 +12,8 @@ typedef struct server {
 
 enum GameObjectType {
         Player = 0,
-        Bomb = 1
+        Bomb = 1,
+        Explosion = 2
 };
 
 struct GameObjectPlayer {
@@ -28,6 +29,25 @@ struct GameObjectBomb {
         unsigned int owner;
 };
 
+#define OBJECT_EXPLOSION_NEXT 0.05
+#define OBJECT_EXPLOSION_DESPAWN 1.5
+
+enum ExplosionDirection {
+        ALL,
+        LEFT,
+        UP,
+        RIGHT,
+        DOWN
+};
+
+struct GameObjectExplosion {
+        unsigned int power;
+        enum ExplosionDirection direction;
+        int clearedArea;
+        float timerNext;
+        float timerDespawn;
+};
+
 struct GameObject {
         int active;
         enum GameObjectType type;
@@ -38,6 +58,7 @@ struct GameObject {
         union {
                 struct GameObjectPlayer player;
                 struct GameObjectBomb bomb;
+                struct GameObjectExplosion explosion;
         } extra;
 };
 

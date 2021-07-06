@@ -8,7 +8,8 @@
 
 enum GameObjectType {
         Player = 0,
-        Bomb = 1
+        Bomb = 1,
+        Explosion = 2
 };
 
 struct GameObject {

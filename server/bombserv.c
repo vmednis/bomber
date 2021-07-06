@@ -505,15 +505,14 @@ static void UpdateGameState(struct GameState* gameState, float delta) {
                                 obj->extra.explosion.timerNext = 10000;
                         }
 
-                        /* Despawn if time has come */
-                        if(obj->extra.explosion.timerDespawn < 0) {
-                                obj->active = 0;
-                                break;
-                        }
-
                         /* Decrease the timers */
                         obj->extra.explosion.timerDespawn -= delta;
                         obj->extra.explosion.timerNext -= delta;
+
+                        /* Despawn if time has come */
+                        if(obj->extra.explosion.timerDespawn < 0) {
+                                obj->active = 0;
+                        }
                 }
                 i++;
         }
